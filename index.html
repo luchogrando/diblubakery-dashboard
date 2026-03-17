@@ -530,6 +530,14 @@ async function apiLoadOrders(){
   try {
     var data = await apiFetch('/api/orders');
     if(data.orders && data.orders.length) ORDERS = data.orders;
+    // auto-add any product names from orders that aren't in PRODS yet
+    ORDERS.forEach(function(o){
+      (o.items||[]).forEach(function(it){
+        if(it.p && !PRODS[it.p]){
+          PRODS[it.p] = {price:0, u:{}};
+        }
+      });
+    });
     // detect new unconfigured products from Wix
     if(currentRole==='admin'){
       updateAdminBadge();
