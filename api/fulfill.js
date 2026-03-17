@@ -1,5 +1,5 @@
-// api/fulfill.js — POST /api/fulfill
-// Marks a Wix order as fulfilled via Wix REST API
+// api/unfulfill.js — POST /api/unfulfill
+// Marks a Wix order as unfulfilled by deleting all its fulfillments
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,74 +15,65 @@ module.exports = async function handler(req, res) {
   const { wixOrderNumber } = req.body || {};
   if (!wixOrderNumber) return res.status(400).json({ error: 'Missing wixOrderNumber' });
 
-  // Wix order number comes as "#11461" — strip the #
   const orderNumber = String(wixOrderNumber).replace('#', '');
 
   try {
-    const WIX_API_KEY    = process.env.WIX_API_KEY;
-    const WIX_ACCOUNT_ID = process.env.WIX_ACCOUNT_ID;
-    const WIX_SITE_ID    = process.env.WIX_SITE_ID;
+    const WIX_API_KEY = process.env.WIX_API_KEY;
+    const WIX_SITE_ID = process.env.WIX_SITE_ID;
 
-    if (!WIX_API_KEY || !WIX_ACCOUNT_ID || !WIX_SITE_ID) {
+    if (!WIX_API_KEY || !WIX_SITE_ID) {
       return res.status(500).json({ error: 'Wix API credentials not configured' });
     }
 
-    // Step 1: Get the order ID from the order number
-    const searchRes = await fetch(
-      `https://www.wixapis.com/ecom/v1/orders/search`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': WIX_API_KEY,
-          'wix-site-id': WIX_SITE_ID,
-        },
-        body: JSON.stringify({
-          filter: { number: { $eq: parseInt(orderNumber) } }
-        }),
-      }
-    );
-    const searchData = await searchRes.json();
-    console.log('Wix search status:', searchRes.status, 'data:', JSON.stringify(searchData));
-    const order = searchData.orders?.[0];
-    if (!order) return res.status(404).json({ error: `Order #${orderNumber} not found in Wix`, searchData });
-
-    // Step 2: Create a fulfillment for the order
-    const fulfillUrl = `https://www.wixapis.com/ecom/v1/fulfillments/orders/${order.id}/create-fulfillment`;
-    const fulfillBody = {
-      fulfillment: {
-        lineItems: order.lineItems.map(function(item) {
-          return { id: item.id, quantity: item.quantity };
-        }),
-      }
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': WIX_API_KEY,
+      'wix-site-id': WIX_SITE_ID,
     };
-    console.log('Fulfill URL:', fulfillUrl);
-    console.log('Fulfill body:', JSON.stringify(fulfillBody));
 
-    const fulfillRes = await fetch(fulfillUrl, {
+    // Step 1: Find order ID
+    const searchRes = await fetch('https://www.wixapis.com/ecom/v1/orders/search', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': WIX_API_KEY,
-        'wix-site-id': WIX_SITE_ID,
-      },
-      body: JSON.stringify(fulfillBody),
+      headers,
+      body: JSON.stringify({ filter: { number: { $eq: parseInt(orderNumber) } } }),
     });
+    const searchData = await searchRes.json();
+    console.log('Wix search status:', searchRes.status);
+    const order = searchData.orders?.[0];
+    if (!order) return res.status(404).json({ error: `Order #${orderNumber} not found in Wix` });
 
-    const fulfillText = await fulfillRes.text();
-    console.log('Wix fulfill status:', fulfillRes.status, 'data:', fulfillText);
-    let fulfillData = {};
-    try { fulfillData = JSON.parse(fulfillText); } catch(e) {}
+    // Step 2: List fulfillments for this order
+    const listRes = await fetch(
+      `https://www.wixapis.com/ecom/v1/fulfillments/orders/${order.id}`,
+      { method: 'GET', headers }
+    );
+    const listText = await listRes.text();
+    console.log('List fulfillments status:', listRes.status, 'data:', listText);
+    let listData = {};
+    try { listData = JSON.parse(listText); } catch(e) {}
 
-    if (!fulfillRes.ok) {
-      return res.status(500).json({ error: 'Failed to fulfill in Wix', detail: fulfillData });
+    const fulfillments = listData.orderWithFulfillments?.fulfillments || [];
+    console.log(`Found ${fulfillments.length} fulfillment(s) to delete`);
+
+    if (fulfillments.length === 0) {
+      return res.status(200).json({ ok: true, message: 'No fulfillments to delete' });
     }
 
-    console.log(`Order #${orderNumber} marked as fulfilled in Wix`);
-    return res.status(200).json({ ok: true });
+    // Step 3: Delete each fulfillment
+    for (const f of fulfillments) {
+      const delRes = await fetch(
+        `https://www.wixapis.com/ecom/v1/fulfillments/orders/${order.id}/fulfillments/${f.id}/delete-fulfillment`,
+        { method: 'POST', headers, body: '{}' }
+      );
+      const delText = await delRes.text();
+      console.log(`Delete fulfillment ${f.id} status:`, delRes.status, delText);
+    }
+
+    console.log(`Order #${orderNumber} marked as unfulfilled in Wix`);
+    return res.status(200).json({ ok: true, deleted: fulfillments.length });
 
   } catch (err) {
-    console.error('Fulfill error:', err);
+    console.error('Unfulfill error:', err);
     return res.status(500).json({ error: err.message });
   }
 };
