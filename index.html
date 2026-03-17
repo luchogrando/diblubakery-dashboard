@@ -1254,13 +1254,13 @@ function renderAdminPres(){
     html+='<div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px">⚠️ '+unconfigured.length+' product'+(unconfigured.length>1?'s':'')+' from Wix need configuration</div>';
     unconfigured.forEach(function(name){
       var pr=PRODS[name];var sid='cb_'+name.replace(/[^a-z0-9]/gi,'_');
-      html+='<div class="combo-row" style="border-color:#f09090;margin-bottom:6px">';
+      html+='<div class="combo-row" id="card-'+sid+'" style="border-color:#f09090;margin-bottom:6px">';
       html+='<div class="combo-hd" style="background:#fdf0f0" onclick="toggleCombo(\''+sid+'\')">';
       html+='<span class="combo-name">'+esc(name)+'</span>';
       html+='<div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--red);font-weight:600">not configured</span>';
       html+='<button class="btn" style="font-size:10px;padding:2px 8px;color:var(--red);border-color:#f09090" onclick="event.stopPropagation();deletePres(\''+name.replace(/'/g,"\\'")+'\')" title="Delete">&#x2715;</button>';
       html+='<span class="combo-arrow" id="arr-'+sid+'">&#x25BC;</span></div></div>';
-      html+='<div class="combo-body" id="body-'+sid+'">';
+      html+='<div class="combo-body open" id="body-'+sid+'">';
       html+='<div id="units-'+sid+'"></div>';
       html+='<div style="margin-top:8px;display:flex;gap:8px;align-items:center">';
       html+='<button class="btn" style="font-size:11px;padding:4px 11px" onclick="addPresUnit(\''+name.replace(/'/g,"\\'")+'\',\''+sid+'\')">+ add product</button>';
@@ -1349,9 +1349,11 @@ function addPresUnit(name,sid){
   if(!firstUnused)return alert('No base products available. Add some in the Base products tab first.');
   PRODS[name].u[firstUnused]=(PRODS[name].u[firstUnused]||0)+1;
   renderAdminPres();
-  // re-open
+  // re-open and scroll into view
   var body=document.getElementById('body-'+sid);
   if(body){body.className='combo-body open';var arr=document.getElementById('arr-'+sid);if(arr)arr.className='combo-arrow open';}
+  var card=document.getElementById('card-'+sid);
+  if(card)setTimeout(function(){card.scrollIntoView({behavior:'smooth',block:'center'});},50);
 }
 function updateComboUnit(name,oldKey,newKey,sid){
   if(!PRODS[name])return;
