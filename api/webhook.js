@@ -16,7 +16,7 @@ module.exports = async function handler(req, res) {
     return res.status(401).json({ error: 'Invalid webhook secret' });
   }
 
-  try {
+  try {console.log('WIX PAYLOAD:', JSON.stringify(body).substring(0, 2000));
     const body = req.body;
     // Wix sends order data — we map it to our format
     const order = parseWixOrder(body);
