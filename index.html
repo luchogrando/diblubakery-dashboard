@@ -890,7 +890,10 @@ function maybeClose(e){if(e.target===document.getElementById('overlay'))closeMod
 function saveDateTime(id){
   var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;
   var dv=document.getElementById('ed-'+id),sv=document.getElementById('es-'+id);
-  if(dv&&dv.value){o.date=dv.value;o.shift=sv.value;o.customDate=false;o.edited=true;o.editedBy=currentUser;}
+  if(dv&&dv.value){
+    o.date=dv.value;o.shift=sv.value;o.customDate=false;o.edited=true;o.editedBy=currentUser;
+    apiUpdateOrder(id,{date:o.date,shift:o.shift,customDate:false,edited:true,editedBy:currentUser});
+  }
   openModal(id);renderOrders();
 }
 function setFulfillment(id){var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(o){o.fulfillment='fulfilled';o.edited=true;o.editedBy=currentUser;apiUpdateOrder(id,{fulfillment:'fulfilled',edited:true,editedBy:currentUser});}openModal(id);renderOrders();}
