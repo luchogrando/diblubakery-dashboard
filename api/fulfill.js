@@ -59,19 +59,19 @@ module.exports = async function handler(req, res) {
         },
         body: JSON.stringify({
           fulfillment: {
-            lineItems: order.lineItems.map(item => ({
-              id: item.id,
-              quantity: item.quantity,
-            })),
+            lineItems: order.lineItems.map(function(item) {
+              return { id: item.id, quantity: item.quantity };
+            }),
           }
         }),
       }
     );
 
+    const fulfillData = await fulfillRes.json().catch(function(){return {};});
+    console.log('Wix fulfill status:', fulfillRes.status, 'data:', JSON.stringify(fulfillData));
+
     if (!fulfillRes.ok) {
-      const err = await fulfillRes.json().catch(() => ({}));
-      console.error('Wix fulfill error:', err);
-      return res.status(500).json({ error: 'Failed to fulfill in Wix', detail: err });
+      return res.status(500).json({ error: 'Failed to fulfill in Wix', detail: fulfillData });
     }
 
     console.log(`Order #${orderNumber} marked as fulfilled in Wix`);
