@@ -7,13 +7,24 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
 <style>
-:root{--accent:#C85A28;--accent-light:#fdf0eb;--sidebar-w:220px;--bg:#f7f6f2;--surface:#ffffff;--border:#e8e5de;--border-dark:#d4d0c8;--text:#1c1b18;--text-2:#6b6860;--text-3:#aba89f;--green:#2d6a12;--green-light:#e8f5e0;--blue:#1a4f8a;--blue-light:#e4eef8;--amber:#7a5200;--amber-light:#fff3cd;--red:#8b1a1a;--red-light:#fde8e8;--purple:#5a1a8b;--purple-light:#f0e8fd;--recurring:#0f5c5c;--recurring-light:#e0f5f5;}
+:root{--accent:#C85A28;--accent-light:#fdf0eb;--sidebar-w:220px;--sidebar-w-collapsed:64px;--bg:#f7f6f2;--surface:#ffffff;--border:#e8e5de;--border-dark:#d4d0c8;--text:#1c1b18;--text-2:#6b6860;--text-3:#aba89f;--green:#2d6a12;--green-light:#e8f5e0;--blue:#1a4f8a;--blue-light:#e4eef8;--amber:#7a5200;--amber-light:#fff3cd;--red:#8b1a1a;--red-light:#fde8e8;--purple:#5a1a8b;--purple-light:#f0e8fd;--recurring:#0f5c5c;--recurring-light:#e0f5f5;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:13px;min-height:100vh;display:flex;}
-.sidebar{width:var(--sidebar-w);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:40;overflow-y:auto;}
-.sidebar-logo{padding:20px 20px 16px;border-bottom:1px solid var(--border);font-family:'DM Serif Display',serif;font-size:18px;letter-spacing:-.3px;}
+.sidebar{width:var(--sidebar-w);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:40;overflow-y:auto;overflow-x:hidden;transition:width .2s ease;}
+.sidebar.collapsed{width:var(--sidebar-w-collapsed);}
+.sidebar-logo{padding:14px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .sidebar-logo em{color:var(--accent);font-style:normal;}
-.sidebar-user{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.sidebar-collapse-btn{background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--text-3);font-size:14px;padding:3px 7px;flex-shrink:0;transition:all .15s;}
+.sidebar-collapse-btn:hover{background:var(--bg);color:var(--text);}
+.sidebar.collapsed .sidebar-logo{justify-content:center;padding:14px 8px;}
+.sidebar.collapsed .sidebar-collapse-btn{display:none;}
+.sidebar-expand-btn{display:none;background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--text-3);font-size:14px;padding:3px 7px;margin-top:10px;align-self:center;}
+.sidebar.collapsed .sidebar-expand-btn{display:flex;}
+.sidebar.collapsed .sidebar-user{padding:10px 8px;justify-content:center;}
+.sidebar.collapsed .user-name,.sidebar.collapsed .user-role,.sidebar.collapsed .sidebar-section,.sidebar.collapsed .nav-label{display:none;}
+.sidebar.collapsed .nav-item{justify-content:center;padding:10px 0;margin:1px 4px;}
+.sidebar.collapsed .nav-badge{display:none;}
+.sidebar-user{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;transition:all .2s;}
 .user-avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;}
 .user-name{font-size:12px;font-weight:600;}.user-role{font-size:10px;color:var(--text-3);margin-top:1px;}
 .sidebar-section{padding:8px 10px 4px;font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;}
@@ -23,7 +34,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .nav-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0;}
 .nav-badge{margin-left:auto;font-size:10px;font-weight:700;background:var(--accent);color:#fff;border-radius:99px;padding:1px 7px;min-width:18px;text-align:center;}
 .nav-badge.green{background:var(--green);}
-.main{margin-left:var(--sidebar-w);flex:1;min-height:100vh;display:flex;flex-direction:column;}
+.main{margin-left:var(--sidebar-w);flex:1;min-height:100vh;display:flex;flex-direction:column;transition:margin-left .2s ease;}
+.main.collapsed{margin-left:var(--sidebar-w-collapsed);}
 .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:30;}
 .topbar-title{font-size:15px;font-weight:600;}
 .topbar-right{display:flex;gap:8px;align-items:center;}
@@ -178,6 +190,9 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
 .admin-section{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:16px;}
 .admin-title{font-size:14px;font-weight:700;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
 .admin-subtitle{font-size:12px;color:var(--text-2);font-weight:400;}
+.admin-tab{padding:11px 18px;font-size:13px;font-weight:500;border:none;background:var(--surface);cursor:pointer;color:var(--text-2);border-bottom:2px solid transparent;font-family:inherit;transition:all .15s;}
+.admin-tab:hover{color:var(--text);background:var(--bg);}
+.admin-tab.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
 .combo-row{border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;}
 .combo-hd{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;background:#faf9f6;cursor:pointer;gap:8px;}
 .combo-hd:hover{background:#f3f2ee;}
@@ -226,7 +241,20 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
 .fb-name{font-size:13px;font-weight:700;}
 .fb-sub{font-size:11px;color:var(--text-2);margin-top:2px;}
 .fb-sent{font-size:10px;color:var(--green);font-weight:600;margin-top:3px;}
+/* ── LOGIN ── */
+.login-screen{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px 32px;width:100%;max-width:360px;text-align:center;}
+.login-logo{font-family:'DM Serif Display',serif;font-size:26px;margin-bottom:6px;}.login-logo em{color:var(--accent);font-style:normal;}
+.login-subtitle{font-size:12px;color:var(--text-3);margin-bottom:28px;}
+.login-field{margin-bottom:12px;text-align:left;}
+.login-label{font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:4px;display:block;text-transform:uppercase;letter-spacing:.5px;}
+.login-input{width:100%;padding:10px 12px;border:1px solid var(--border-dark);border-radius:8px;font-size:14px;font-family:inherit;background:var(--surface);color:var(--text);transition:border-color .15s;}
+.login-input:focus{outline:none;border-color:var(--accent);}
+.login-btn{width:100%;padding:11px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;margin-top:8px;transition:background .15s;}
+.login-btn:hover{background:#a84520;}
+.login-error{font-size:12px;color:var(--red);margin-top:10px;min-height:18px;}
 @media(max-width:768px){
+  .login-card{margin:16px;padding:28px 20px;}
   .sidebar{width:100%;height:auto;position:relative;border-right:none;border-bottom:1px solid var(--border);flex-direction:row;flex-wrap:wrap;overflow-x:auto;}
   .sidebar-logo{padding:12px 16px;border-bottom:none;border-right:1px solid var(--border);}
   .sidebar-user,.sidebar-section{display:none;}
@@ -239,31 +267,55 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
 </style>
 </head>
 <body>
-<nav class="sidebar">
-  <div class="sidebar-logo"><em>diblu</em>bakery</div>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <img src="https://static.wixstatic.com/media/5f0772_31200324f99d4a099dd4a56742cb972d~mv2.png/v1/fill/w_162,h_162,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/Logo%2050%20x%2050%20(1)_edited_edited.png" style="width:100px;height:100px;border-radius:50%;margin-bottom:20px;object-fit:cover;">
+    <div class="login-subtitle">Production &amp; delivery dashboard</div>
+    <div class="login-field">
+      <label class="login-label">Username</label>
+      <input class="login-input" type="text" id="login-user" placeholder="your username" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+    </div>
+    <div class="login-field">
+      <label class="login-label">Password</label>
+      <input class="login-input" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">Sign in</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <img src="https://static.wixstatic.com/media/5f0772_31200324f99d4a099dd4a56742cb972d~mv2.png/v1/fill/w_162,h_162,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/Logo%2050%20x%2050%20(1)_edited_edited.png" style="width:72px;height:72px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+    <button class="sidebar-collapse-btn" onclick="toggleSidebar()" title="Collapse sidebar">&#x2190;</button>
+  </div>
+  <button class="sidebar-expand-btn" onclick="toggleSidebar()" title="Expand sidebar">&#x2192;</button>
   <div class="sidebar-user" id="sidebar-user">
     <div class="user-avatar" id="user-avatar">A</div>
     <div><div class="user-name" id="user-name-display">Admin</div><div class="user-role" id="user-role-display">Administrator</div></div>
   </div>
   <div class="sidebar-section">Operations</div>
-  <div class="nav-item on" id="nav-orders" onclick="showPage('orders')"><span class="nav-icon">📋</span> Orders</div>
-  <div class="nav-item" id="nav-prod" onclick="showPage('prod')"><span class="nav-icon">🥐</span> Production</div>
-  <div class="nav-item" id="nav-tasks" onclick="showPage('tasks')"><span class="nav-icon">✅</span> Tasks <span class="nav-badge green" id="tasks-badge">0</span></div>
-  <div class="nav-item" id="nav-rem" onclick="showPage('rem')"><span class="nav-icon">💬</span> Send Reminders</div>
-  <div class="nav-item" id="nav-feedback" onclick="showPage('feedback')"><span class="nav-icon">⭐</span> Feedback</div>
+  <div class="nav-item on" id="nav-orders" onclick="showPage('orders')"><span class="nav-icon">📋</span><span class="nav-label"> Orders</span></div>
+  <div class="nav-item" id="nav-prod" onclick="showPage('prod')"><span class="nav-icon">🥐</span><span class="nav-label"> Production</span></div>
+  <div class="nav-item" id="nav-tasks" onclick="showPage('tasks')"><span class="nav-icon">✅</span><span class="nav-label"> Tasks</span> <span class="nav-badge green" id="tasks-badge">0</span></div>
+  <div class="nav-item" id="nav-rem" onclick="showPage('rem')"><span class="nav-icon">💬</span><span class="nav-label"> Send Reminders</span></div>
+  <div class="nav-item" id="nav-feedback" onclick="showPage('feedback')"><span class="nav-icon">⭐</span><span class="nav-label"> Feedback</span></div>
   <div class="sidebar-section" id="nav-section-mgmt">Management</div>
-  <div class="nav-item" id="nav-recurring" onclick="showPage('recurring')"><span class="nav-icon">🔁</span> Recurring Orders</div>
-  <div class="nav-item" id="nav-admin" onclick="showPage('admin')"><span class="nav-icon">⚙️</span> Admin</div>
+  <div class="nav-item" id="nav-recurring" onclick="showPage('recurring')"><span class="nav-icon">🔁</span><span class="nav-label"> Recurring Orders</span></div>
+  <div class="nav-item" id="nav-admin" onclick="showPage('admin')"><span class="nav-icon">⚙️</span><span class="nav-label"> Admin</span><span class="nav-badge" id="admin-badge" style="display:none;background:var(--red)">0</span></div>
 </nav>
 <div class="main">
   <div class="topbar">
     <div class="topbar-title" id="topbar-title">Orders</div>
     <div class="topbar-right">
       <span class="topbar-total" id="topbar-total" style="display:none"></span>
-      <select id="role-switcher" onchange="switchRole(this.value)" style="padding:5px 10px;border:1px solid var(--border-dark);border-radius:7px;font-size:12px;font-family:inherit;background:var(--surface)">
-        <option value="admin">👤 Admin (you)</option>
-        <option value="staff">👤 Team view</option>
+      <span id="topbar-user" style="font-size:12px;color:var(--text-2);font-weight:500"></span>
+      <select id="view-switcher" onchange="switchViewAs(this.value)" style="display:none;padding:4px 10px;border:1px solid var(--border-dark);border-radius:7px;font-size:12px;font-family:inherit;background:var(--surface)">
+        <option value="admin">My view (admin)</option>
+        <option value="team">Preview team view</option>
       </select>
+      <button class="btn" onclick="doLogout()" style="font-size:11px;padding:4px 12px;">Sign out</button>
       <button class="btn accent" onclick="showPage('new')">+ order</button>
     </div>
   </div>
@@ -384,15 +436,15 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
 
   <!-- ADMIN -->
   <div class="page" id="page-admin">
-    <div class="admin-section">
-      <div class="admin-title">Combo &amp; product recipes <span class="admin-subtitle">Edit what each product contains in bake units</span></div>
-      <div id="combo-editor"></div>
+    <!-- Admin tabs -->
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:18px;background:var(--surface);border-radius:10px 10px 0 0;overflow:hidden">
+      <button class="admin-tab on" id="atab-base" onclick="switchAdminTab('base')">🥐 Base products</button>
+      <button class="admin-tab" id="atab-pres" onclick="switchAdminTab('pres')">📦 Presentations &amp; combos</button>
+      <button class="admin-tab" id="atab-team" onclick="switchAdminTab('team')">👥 Team</button>
     </div>
-    <div class="admin-section">
-      <div class="admin-title">Team members <span class="admin-subtitle">Manage access and roles</span></div>
-      <table class="team-table" id="team-table"></table>
-      <div style="margin-top:14px"><button class="btn" onclick="openInviteModal()">+ invite team member</button></div>
-    </div>
+    <div id="admin-base"></div>
+    <div id="admin-pres" style="display:none"></div>
+    <div id="admin-team" style="display:none"></div>
   </div>
 
   <!-- NEW ORDER -->
@@ -428,40 +480,192 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
 
 <div class="overlay" id="overlay" onclick="maybeClose(event)"><div class="mbox" id="mbox"></div></div>
 <div class="overlay" id="comment-overlay" onclick="maybeCloseComment(event)"><div class="mbox" id="comment-mbox" style="max-width:340px"></div></div>
-<div class="popup" id="popup"><button class="popup-x" onclick="document.getElementById('popup').style.display='none'">×</button><div id="popup-content"></div></div>
+
 
 <script>
-var currentRole='admin',currentUser='Admin';
-function switchRole(r){
-  currentRole=r;currentUser=r==='admin'?'Admin':'Maria (team)';
-  document.getElementById('user-avatar').textContent=r==='admin'?'A':'M';
+function toggleSidebar(){
+  var sb=document.getElementById('sidebar');
+  var main=document.querySelector('.main');
+  sb.classList.toggle('collapsed');
+  main.classList.toggle('collapsed');
+}
+
+// ─── USERS & AUTH ───────────────────────────────────────────────
+var USERS = [
+  {username:'admin', password:'medialunas2023', role:'admin', displayName:'Admin'},
+  {username:'flavi', password:'hoboken',        role:'team',  displayName:'Flavi'}
+];
+// ↑ Change usernames and passwords here before publishing
+
+var currentRole = null;
+var currentUser = null;
+
+// ── API HELPERS ──────────────────────────────────────────────────
+var API_TOKEN = null;
+
+function apiToken(){return API_TOKEN;}
+
+async function apiFetch(path, options){
+  var opts = options || {};
+  opts.headers = opts.headers || {};
+  if(API_TOKEN) opts.headers['Authorization'] = 'Bearer ' + API_TOKEN;
+  opts.headers['Content-Type'] = 'application/json';
+  var res = await fetch(path, opts);
+  if(!res.ok){
+    var err = await res.json().catch(function(){return {};});
+    throw new Error(err.error || 'API error ' + res.status);
+  }
+  return res.json();
+}
+
+async function apiLoadOrders(){
+  try {
+    var data = await apiFetch('/api/orders');
+    if(data.orders && data.orders.length) ORDERS = data.orders;
+  } catch(e){
+    console.warn('Could not load orders from API, using local data:', e.message);
+  }
+}
+
+async function apiUpdateOrder(id, fields){
+  try {
+    await apiFetch('/api/update', {
+      method:'POST',
+      body: JSON.stringify({id: id, ...fields})
+    });
+  } catch(e){
+    console.warn('Could not sync update to Sheet:', e.message);
+  }
+}
+
+async function doLogin(){
+  var u=document.getElementById('login-user').value.trim().toLowerCase();
+  var p=document.getElementById('login-pass').value;
+  var btn=document.querySelector('.login-btn');
+  btn.textContent='Signing in...';btn.disabled=true;
+  document.getElementById('login-error').textContent='';
+
+  try {
+    // Try API auth first (production)
+    var data = await apiFetch('/api/auth', {
+      method:'POST',
+      body: JSON.stringify({username:u, password:p})
+    });
+    API_TOKEN = data.token;
+    var match = data.user;
+    currentRole = match.role;
+    currentUser = match.displayName;
+  } catch(e){
+    // Fallback to local USERS (development / offline)
+    var localMatch = USERS.find(function(x){return x.username===u&&x.password===p;});
+    if(!localMatch){
+      document.getElementById('login-error').textContent='Incorrect username or password.';
+      document.getElementById('login-pass').value='';
+      btn.textContent='Sign in';btn.disabled=false;
+      return;
+    }
+    currentRole = localMatch.role;
+    currentUser = localMatch.displayName;
+  }
+
+  btn.textContent='Sign in';btn.disabled=false;
+  var isAdmin=currentRole==='admin';
+  // update sidebar
+  document.getElementById('user-avatar').textContent=currentUser.charAt(0).toUpperCase();
   document.getElementById('user-name-display').textContent=currentUser;
-  document.getElementById('user-role-display').textContent=r==='admin'?'Administrator':'Team member';
-  // team can see recurring but not admin panel
-  document.getElementById('nav-section-mgmt').style.display=r==='staff'?'none':'';
-  document.getElementById('nav-admin').style.display=r==='staff'?'none':'';
-  document.getElementById('nav-recurring').style.display=''; // always visible
-  if(r==='staff'&&document.getElementById('page-admin').classList.contains('on'))showPage('orders');
+  document.getElementById('user-role-display').textContent=isAdmin?'Administrator':'Team member';
+  document.getElementById('topbar-user').textContent=currentUser;
+  // show team view switcher only for admin
+  var switcher=document.getElementById('view-switcher');
+  switcher.style.display=isAdmin?'':'none';
+  switcher.value='admin';
+  // hide/show nav based on role
+  document.getElementById('nav-section-mgmt').style.display=isAdmin?'':'none';
+  document.getElementById('nav-admin').style.display=isAdmin?'':'none';
+  document.getElementById('nav-recurring').style.display='';
+  // hide login, show app
+  document.getElementById('login-screen').style.display='none';
+  // load orders from Sheet then render
+  await apiLoadOrders();
+  addRow();
+  renderOrders();
+  updateTasksBadge();
+  if(isAdmin){updateAdminBadge();setTimeout(showUnconfiguredPopup,400);}
+  document.getElementById('p-wlabel').textContent=fmtWeek(pW);
+  document.getElementById('t-wlabel').textContent=fmtWeek(tW);
+  document.getElementById('r-wlabel').textContent=fmtWeek(rW);
+  document.getElementById('fb-wlabel').textContent=fmtWeek(fbW);
+}
+
+function switchViewAs(v){
+  var previewRole=v==='team'?'team':'admin';
+  var isAdmin=previewRole==='admin';
+  document.getElementById('nav-section-mgmt').style.display=isAdmin?'':'none';
+  document.getElementById('nav-admin').style.display=isAdmin?'':'none';
+  currentRole=previewRole;
   renderAll();
 }
 
-var PRODS={
-  'Medialunas - Box of 12':{price:25,u:{medialunas:12}},
-  'Medialunas - Box of 5':{price:15,u:{medialunas:5}},
-  'Get to Know Me - Combo':{price:18,u:{medialunas:2,alf_maicena:2,alf_almendra:2}},
-  'Alfajores Combo':{price:40,u:{alf_maicena:12,alf_almendra:12,alf_vainilla:12}},
-  'Maicena Alfajores - Box of 12':{price:15,u:{alf_maicena:12}},
-  'Almond Alfajores - Box of 12':{price:15,u:{alf_almendra:12}},
-  'Vanilla Alfajores - Box of 12':{price:15,u:{alf_vainilla:12}},
-  'Chocolate Alfajores - Box of 6':{price:18,u:{alf_choco:6}},
-  'Brownies - Box of 12':{price:15,u:{brownies:12}},
-  'Cookies - Box of 3':{price:15,u:{cookies:3}},
-  'Chipá':{price:12,u:{chipa:1}},
-  'Chocotorta':{price:30,u:{chocotorta:1}},
-  'Rogel':{price:25,u:{rogel:1}},
-  'Pastafrola Pie':{price:25,u:{pastafrola:1}}
+function doLogout(){
+  currentRole=null;currentUser=null;
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
+  document.getElementById('login-error').textContent='';
+}
+
+function switchRole(r){
+  // kept for internal use only — not exposed to UI
+  currentRole=r;
+  var isAdmin=r==='admin';
+  document.getElementById('nav-section-mgmt').style.display=isAdmin?'':'none';
+  document.getElementById('nav-admin').style.display=isAdmin?'':'none';
+  if(!isAdmin&&document.getElementById('page-admin').classList.contains('on'))showPage('orders');
+  renderAll();
+}
+
+// BASE_PRODUCTS: the atomic units you actually bake
+var BASE_PRODUCTS = {
+  'medialuna':      {name:'Medialuna'},
+  'alf_maicena':    {name:'Alfajor maicena'},
+  'alf_almendra':   {name:'Alfajor almendra'},
+  'alf_vainilla':   {name:'Alfajor vainilla'},
+  'alf_choco':      {name:'Alfajor chocolate'},
+  'brownie':        {name:'Brownie'},
+  'cookie':         {name:'Cookie'},
+  'chipa':          {name:'Chipá'},
+  'chocotorta':     {name:'Chocotorta entera'},
+  'rogel':          {name:'Rogel entero'},
+  'pastafrola':     {name:'Pastafrola entera'}
 };
-var UL={medialunas:'Medialunas',alf_maicena:'Alfajores maicena',alf_almendra:'Alfajores almendra',alf_vainilla:'Alfajores vainilla',alf_choco:'Alfajores chocolate',brownies:'Brownies',cookies:'Cookies',chipa:'Chipá packs',chocotorta:'Chocotorta',rogel:'Rogel',pastafrola:'Pastafrola'};
+
+// PRODS: presentations / combos sold on Wix (what customers order)
+var PRODS={
+  'Medialunas - Box of 12':          {price:25, u:{medialuna:12}},
+  'Medialunas - Box of 5':           {price:15, u:{medialuna:5}},
+  'Get to Know Me - Combo':          {price:18, u:{medialuna:2, alf_maicena:2, alf_almendra:2}},
+  'Alfajores Combo':                 {price:40, u:{alf_maicena:12, alf_almendra:12, alf_vainilla:12}},
+  'Maicena Alfajores - Box of 12':   {price:15, u:{alf_maicena:12}},
+  'Almond Alfajores - Box of 12':    {price:15, u:{alf_almendra:12}},
+  'Vanilla Alfajores - Box of 12':   {price:15, u:{alf_vainilla:12}},
+  'Chocolate Alfajores - Box of 6':  {price:18, u:{alf_choco:6}},
+  'Brownies - Box of 12':            {price:15, u:{brownie:12}},
+  'Cookies - Box of 3':              {price:15, u:{cookie:3}},
+  'Chipá':                           {price:12, u:{chipa:6}},
+  'Chocotorta':                      {price:30, u:{chocotorta:1}},
+  'Rogel':                           {price:25, u:{rogel:1}},
+  'Pastafrola Pie':                  {price:25, u:{pastafrola:1}},
+  // ↓ Example: product that arrived from Wix but not yet configured
+  'Holiday Cookie Box':              {price:22, u:{}, _fromWix:true}
+};
+
+// UL: display labels for base products (derived from BASE_PRODUCTS)
+function getUL(){
+  var ul={};
+  Object.keys(BASE_PRODUCTS).forEach(function(k){ul[k]=BASE_PRODUCTS[k].name;});
+  return ul;
+}
+var UL=getUL();
 
 var ORDERS=[
   {id:1,wix:'#1001',name:'Jennifer Martinez',phone:'+12015559001',date:'2026-03-20',shift:'morning',type:'delivery',fulfillment:'unfulfilled',delivery:'pending',customDate:false,recurring:false,edited:false,editedBy:'',notes:'',items:[{p:'Medialunas - Box of 12',q:1},{p:'Alfajores Combo',q:1}]},
@@ -540,7 +744,7 @@ function showPage(p){
   if(p==='rem')renderRem();
   if(p==='feedback'){renderFeedback();}
   if(p==='recurring')renderRecurring();
-  if(p==='admin')renderAdmin();
+  if(p==='admin'){renderAdmin();updateAdminBadge();}
 }
 function changeWeek(ctx,d){
   if(ctx==='o')oW+=d;else if(ctx==='p')pW+=d;else if(ctx==='t')tW+=d;else if(ctx==='r')rW+=d;else if(ctx==='fb')fbW+=d;
@@ -702,15 +906,15 @@ function saveDateTime(id){
   if(dv&&dv.value){o.date=dv.value;o.shift=sv.value;o.customDate=false;o.edited=true;o.editedBy=currentUser;}
   openModal(id);renderOrders();
 }
-function setFulfillment(id){var o=ORDERS.find(function(x){return x.id===id;});if(o){o.fulfillment='fulfilled';o.edited=true;o.editedBy=currentUser;}openModal(id);renderOrders();}
+function setFulfillment(id){var o=ORDERS.find(function(x){return x.id===id;});if(o){o.fulfillment='fulfilled';o.edited=true;o.editedBy=currentUser;apiUpdateOrder(id,{fulfillment:'fulfilled',edited:true,editedBy:currentUser});}openModal(id);renderOrders();}
 function undoFulfillment(id){
   if(currentRole!=='admin')return alert('Only admin can undo fulfillment status.');
-  var o=ORDERS.find(function(x){return x.id===id;});if(o){o.fulfillment='unfulfilled';o.edited=true;o.editedBy=currentUser;}openModal(id);renderOrders();
+  var o=ORDERS.find(function(x){return x.id===id;});if(o){o.fulfillment='unfulfilled';o.edited=true;o.editedBy=currentUser;apiUpdateOrder(id,{fulfillment:'unfulfilled',edited:true,editedBy:currentUser});}openModal(id);renderOrders();
 }
-function setDelivered(id){var o=ORDERS.find(function(x){return x.id===id;});if(o){o.delivery='delivered';o.edited=true;o.editedBy=currentUser;}openModal(id);renderOrders();}
+function setDelivered(id){var o=ORDERS.find(function(x){return x.id===id;});if(o){o.delivery='delivered';o.edited=true;o.editedBy=currentUser;apiUpdateOrder(id,{delivery:'delivered',edited:true,editedBy:currentUser});}openModal(id);renderOrders();}
 function undoDelivered(id){
   if(currentRole!=='admin')return alert('Only admin can undo delivery status.');
-  var o=ORDERS.find(function(x){return x.id===id;});if(o){o.delivery='pending';o.edited=true;o.editedBy=currentUser;}openModal(id);renderOrders();
+  var o=ORDERS.find(function(x){return x.id===id;});if(o){o.delivery='pending';o.edited=true;o.editedBy=currentUser;apiUpdateOrder(id,{delivery:'pending',edited:true,editedBy:currentUser});}openModal(id);renderOrders();
 }
 
 function buildMsg(o,template){
@@ -756,17 +960,17 @@ function showPopup(e,day,unit){
   var days=day==='all'?isos:[day];var combined={};
   days.forEach(function(d){((bd[d]&&bd[d][unit])||[]).forEach(function(r){if(!combined[r.p])combined[r.p]={n:0,boxQ:0};combined[r.p].n+=r.n;combined[r.p].boxQ+=r.boxQ;});});
   var total=Object.values(combined).reduce(function(s,v){return s+v.n;},0);
-  if(!total){document.getElementById('popup').style.display='none';return;}
-  var h='<h4>'+(UL[unit]||unit)+(day==='all'?' \u00b7 full week':' \u00b7 '+fmtS(new Date(day+'T12:00')))+'</h4>';
-  Object.keys(combined).forEach(function(p){h+='<div class="prow"><span>'+esc(p)+' \u00d7'+combined[p].boxQ+'</span><span style="flex-shrink:0;font-weight:700">'+combined[p].n+'</span></div>';});
-  h+='<div class="prow"><span>Total</span><span>'+total+'</span></div>';
-  document.getElementById('popup-content').innerHTML=h;
-  var pop=document.getElementById('popup');pop.style.display='block';
-  var rect=e.target.getBoundingClientRect();
-  pop.style.left=Math.max(10,Math.min(rect.left+window.scrollX,window.innerWidth-330))+'px';
-  pop.style.top=(rect.bottom+window.scrollY+6)+'px';
+  if(!total)return;
+  var title=(UL[unit]||unit)+(day==='all'?' \u00b7 full week':' \u00b7 '+fmtS(new Date(day+'T12:00')));
+  var h='<div class="mtitle">'+esc(title)+'<button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
+  h+='<div class="msec">Breakdown by presentation</div>';
+  Object.keys(combined).forEach(function(p){
+    h+='<div class="mrow"><span class="ml">'+esc(p)+' \u00d7'+combined[p].boxQ+'</span><span class="mr" style="font-weight:700">'+combined[p].n+' units</span></div>';
+  });
+  h+='<div style="display:flex;justify-content:space-between;padding:10px 0 0;margin-top:6px;border-top:1px solid var(--border);font-size:14px;font-weight:700"><span>Total</span><span style="color:var(--accent)">'+total+'</span></div>';
+  document.getElementById('mbox').innerHTML=h;
+  document.getElementById('overlay').className='overlay on';
 }
-document.addEventListener('click',function(e){var p=document.getElementById('popup');if(p&&!p.contains(e.target))p.style.display='none';});
 
 function renderTasks(){
   document.getElementById('t-wlabel').textContent=fmtWeek(tW);
@@ -949,46 +1153,268 @@ function saveRecurringForm(id){
   closeModal();renderRecurring();
 }
 
-function renderAdmin(){
-  var html='';
-  Object.keys(PRODS).forEach(function(name){
-    var pr=PRODS[name];var sid='cb_'+name.replace(/[^a-z0-9]/gi,'_');
-    var summary=Object.keys(pr.u).filter(function(u){return pr.u[u]>0;}).map(function(u){return pr.u[u]+' '+UL[u];}).join(', ');
-    html+='<div class="combo-row"><div class="combo-hd" onclick="toggleCombo(\''+sid+'\')"><span class="combo-name">'+esc(name)+'</span><div style="display:flex;align-items:center;gap:10px"><span class="combo-summary">'+esc(summary)+'</span><span class="combo-arrow" id="arr-'+sid+'">&#x25BC;</span></div></div>';
-    html+='<div class="combo-body" id="body-'+sid+'"><div>';
-    Object.keys(UL).forEach(function(u){html+='<div class="unit-row"><label>'+UL[u]+'</label><input type="number" min="0" value="'+(pr.u[u]||0)+'" onchange="updateCombo(\''+name+'\',\''+u+'\',this.value)"></div>';});
-    html+='</div><div style="padding:8px 0;display:flex;align-items:center"><button class="btn accent" onclick="flashSaved(\''+sid+'\')">Save changes</button><span class="save-flash" id="flash-'+sid+'">Saved! &#x2713;</span></div></div></div>';
+// ─── ADMIN TAB SWITCHER ─────────────────────────────────────────
+var currentAdminTab = 'base';
+function switchAdminTab(tab){
+  currentAdminTab = tab;
+  ['base','pres','team'].forEach(function(t){
+    document.getElementById('admin-'+t).style.display = t===tab?'block':'none';
+    document.getElementById('atab-'+t).className = 'admin-tab'+(t===tab?' on':'');
   });
-  document.getElementById('combo-editor').innerHTML=html;
-  var th='<thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Actions</th></tr></thead><tbody>';
-  TEAM.forEach(function(m){
-    th+='<tr><td style="font-weight:600">'+esc(m.name)+'</td><td style="color:var(--text-2)">'+esc(m.email)+'</td>';
-    th+='<td><span class="role-badge '+(m.role==='admin'?'role-admin':'role-staff')+'">'+m.role+'</span></td>';
-    th+='<td><select onchange="changeRole('+m.id+',this.value)" style="padding:4px 8px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;font-family:inherit"><option value="admin"'+(m.role==='admin'?' selected':'')+'>Admin</option><option value="staff"'+(m.role==='staff'?' selected':'')+'>Staff</option></select>';
-    if(m.id!==1)th+=' <button class="btn" style="font-size:11px;padding:3px 9px;color:var(--red)" onclick="removeTeamMember('+m.id+')">Remove</button>';
-    th+='</td></tr>';
-  });
-  th+='</tbody>';document.getElementById('team-table').innerHTML=th;
+  if(tab==='base') renderAdminBase();
+  if(tab==='pres') renderAdminPres();
+  if(tab==='team') renderAdminTeam();
 }
+
+function renderAdmin(){
+  // ensure all tab containers exist before rendering
+  ['base','pres','team'].forEach(function(t){
+    var el=document.getElementById('admin-'+t);
+    if(el)el.style.display=t===currentAdminTab?'block':'none';
+    var tab=document.getElementById('atab-'+t);
+    if(tab)tab.className='admin-tab'+(t===currentAdminTab?' on':'');
+  });
+  if(currentAdminTab==='base')renderAdminBase();
+  else if(currentAdminTab==='pres')renderAdminPres();
+  else if(currentAdminTab==='team')renderAdminTeam();
+}
+
+// ── SECTION 1: BASE PRODUCTS ──────────────────────────────────
+var editingBase = {};
+function renderAdminBase(){
+  var html='<div class="admin-section">';
+  html+='<div class="admin-title">Base products <span class="admin-subtitle">The individual units you actually bake</span><button class="btn accent" onclick="openNewBaseModal()">+ add base product</button></div>';
+  html+='<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">';
+  var keys=Object.keys(BASE_PRODUCTS);
+  keys.forEach(function(key,i){
+    var bp=BASE_PRODUCTS[key];
+    var isEditing=!!editingBase[key];
+    var last=i===keys.length-1;
+    html+='<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;'+(last?'':'border-bottom:1px solid var(--border);')+'">';
+    if(isEditing){
+      html+='<input type="text" id="bp-'+key+'" value="'+esc(bp.name)+'" style="flex:1;padding:6px 9px;border:1px solid var(--accent);border-radius:6px;font-size:13px;font-family:inherit;background:var(--surface);color:var(--text)">';
+      html+='<button class="btn accent" style="font-size:11px;padding:4px 11px;flex-shrink:0" onclick="saveBaseProduct(\''+key+'\')">Save</button>';
+      html+='<button class="btn" style="font-size:11px;padding:4px 11px;flex-shrink:0" onclick="cancelBaseEdit(\''+key+'\')">Cancel</button>';
+    } else {
+      html+='<span style="flex:1;font-size:13px;font-weight:500;color:var(--text);padding:6px 2px">'+esc(bp.name)+'</span>';
+      html+='<button class="btn" style="font-size:12px;padding:4px 10px;flex-shrink:0" onclick="startBaseEdit(\''+key+'\')" title="Edit">✏️</button>';
+      html+='<button class="btn" style="font-size:11px;padding:4px 9px;color:var(--red);flex-shrink:0" onclick="deleteBaseProduct(\''+key+'\')">Remove</button>';
+    }
+    html+='</div>';
+  });
+  if(!keys.length) html+='<div style="padding:16px;color:var(--text-3);font-size:13px;font-style:italic">No base products yet</div>';
+  html+='</div></div>';
+  document.getElementById('admin-base').innerHTML=html;
+}
+function startBaseEdit(key){editingBase[key]=true;renderAdminBase();setTimeout(function(){var el=document.getElementById('bp-'+key);if(el){el.focus();el.select();}},50);}
+function cancelBaseEdit(key){delete editingBase[key];renderAdminBase();}
+function saveBaseProduct(key){
+  var inp=document.getElementById('bp-'+key);
+  if(!inp)return;
+  var val=inp.value.trim();
+  if(!val)return;
+  BASE_PRODUCTS[key].name=val;
+  UL[key]=val;
+  delete editingBase[key];
+  renderAdminBase();
+}
+
+function openNewBaseModal(){
+  var h='<div class="mtitle">New base product<button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
+  h+='<div style="margin-bottom:16px"><div class="flabel">Product name</div><input class="finput" type="text" id="nbp-name" placeholder="e.g. Torta de chocolate" autocomplete="off"></div>';
+  h+='<div class="mactions"><button class="btn accent" onclick="saveNewBase()" style="padding:10px;font-size:13px">Save</button></div>';
+  document.getElementById('mbox').innerHTML=h;
+  document.getElementById('overlay').className='overlay on';
+  setTimeout(function(){document.getElementById('nbp-name').focus();},100);
+}
+function saveNewBase(){
+  var name=document.getElementById('nbp-name').value.trim();
+  if(!name)return alert('Enter a product name');
+  var key=name.toLowerCase().replace(/[^a-z0-9]/g,'_');
+  if(BASE_PRODUCTS[key])return alert('A base product with this name already exists');
+  BASE_PRODUCTS[key]={name:name};
+  UL[key]=name;
+  closeModal();renderAdminBase();
+}
+function deleteBaseProduct(key){
+  var usedIn=Object.keys(PRODS).filter(function(p){return PRODS[p].u&&PRODS[p].u[key];});
+  if(usedIn.length)return alert('Cannot remove — used in: '+usedIn.join(', '));
+  if(!confirm('Remove "'+BASE_PRODUCTS[key].name+'"?'))return;
+  delete BASE_PRODUCTS[key];delete UL[key];
+  renderAdminBase();
+}
+
+// ── SECTION 2: PRESENTATIONS & COMBOS ────────────────────────
+function renderAdminPres(){
+  var html='<div class="admin-section">';
+  html+='<div class="admin-title">Presentations &amp; combos <span class="admin-subtitle">What customers order on Wix, and what goes into each</span><button class="btn accent" onclick="openNewPresModal()">+ add presentation / combo</button></div>';
+
+  // Unconfigured products first, highlighted
+  var unconfigured=getUnconfigured();
+  if(unconfigured.length){
+    html+='<div style="background:var(--red-light);border:1.5px solid #f09090;border-radius:8px;padding:12px 14px;margin-bottom:14px">';
+    html+='<div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px">⚠️ '+unconfigured.length+' product'+(unconfigured.length>1?'s':'')+' from Wix need configuration</div>';
+    unconfigured.forEach(function(name){
+      var pr=PRODS[name];var sid='cb_'+name.replace(/[^a-z0-9]/gi,'_');
+      html+='<div class="combo-row" style="border-color:#f09090;margin-bottom:6px">';
+      html+='<div class="combo-hd" style="background:#fdf0f0" onclick="toggleCombo(\''+sid+'\')">';
+      html+='<span class="combo-name">'+esc(name)+'</span>';
+      html+='<div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--red);font-weight:600">not configured</span>';
+      html+='<button class="btn" style="font-size:10px;padding:2px 8px;color:var(--red);border-color:#f09090" onclick="event.stopPropagation();deletePres(\''+name.replace(/'/g,"\\'")+'\')" title="Delete">&#x2715;</button>';
+      html+='<span class="combo-arrow" id="arr-'+sid+'">&#x25BC;</span></div></div>';
+      html+='<div class="combo-body" id="body-'+sid+'">';
+      html+='<div id="units-'+sid+'"></div>';
+      html+='<div style="margin-top:8px;display:flex;gap:8px;align-items:center">';
+      html+='<button class="btn" style="font-size:11px;padding:4px 11px" onclick="addPresUnit(\''+name.replace(/'/g,"\\'")+'\',\''+sid+'\')">+ add product</button>';
+      html+='<button class="btn accent" onclick="flashSaved(\''+sid+'\');updateAdminBadge()">Save changes</button>';
+      html+='<span class="save-flash" id="flash-'+sid+'">Saved! &#x2713;</span></div></div></div>';
+    });
+    html+='</div>';
+  }
+  // Configured products
+  Object.keys(PRODS).forEach(function(name){
+    var pr=PRODS[name];
+    if(!pr.u||Object.keys(pr.u).length===0)return; // shown above
+    var sid='cb_'+name.replace(/[^a-z0-9]/gi,'_');
+    var units=pr.u||{};
+    var summary=Object.keys(units).filter(function(u){return units[u]>0;}).map(function(u){return units[u]+' '+(UL[u]||u);}).join(', ')||'<span style="color:var(--text-3)">no units defined</span>';
+    html+='<div class="combo-row">';
+    html+='<div class="combo-hd" onclick="toggleCombo(\''+sid+'\')">';
+    html+='<span class="combo-name">'+esc(name)+'</span>';
+    html+='<div style="display:flex;align-items:center;gap:8px"><span class="combo-summary">'+summary+'</span>';
+    html+='<button class="btn" style="font-size:10px;padding:2px 8px;color:var(--red);border-color:var(--red-light)" onclick="event.stopPropagation();deletePres(\''+name.replace(/'/g,"\\'")+'\')" title="Delete">&#x2715;</button>';
+    html+='<span class="combo-arrow" id="arr-'+sid+'">&#x25BC;</span></div></div>';
+    html+='<div class="combo-body" id="body-'+sid+'">';
+    html+='<div id="units-'+sid+'">';
+    Object.keys(units).forEach(function(u){
+      html+='<div class="unit-row" id="ur-'+sid+'-'+u+'">';
+      html+='<select style="flex:1;padding:5px 9px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;font-family:inherit" onchange="updateComboUnit(\''+name.replace(/'/g,"\\'")+'\',\''+u+'\',this.value,\''+sid+'\')">';
+      Object.keys(BASE_PRODUCTS).forEach(function(bk){
+        html+='<option value="'+bk+'"'+(bk===u?' selected':'')+'>'+esc(BASE_PRODUCTS[bk].name)+'</option>';
+      });
+      html+='</select>';
+      html+='<input type="number" min="0" value="'+(units[u]||0)+'" style="width:60px;padding:5px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;text-align:center" onchange="updateCombo(\''+name.replace(/'/g,"\\'")+'\',\''+u+'\',this.value)">';
+      html+='<button class="task-btn" style="color:var(--red)" onclick="removePresUnit(\''+name.replace(/'/g,"\\'")+'\',\''+u+'\',\''+sid+'\')">&#x2715;</button>';
+      html+='</div>';
+    });
+    html+='</div>';
+    html+='<div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
+    html+='<button class="btn" style="font-size:11px;padding:4px 11px" onclick="addPresUnit(\''+name.replace(/'/g,"\\'")+'\',\''+sid+'\')">+ add product</button>';
+    html+='<button class="btn accent" onclick="flashSaved(\''+sid+'\')">Save changes</button>';
+    html+='<span class="save-flash" id="flash-'+sid+'">Saved! &#x2713;</span>';
+    html+='</div></div></div>';
+  });
+  html+='</div>';
+  document.getElementById('admin-pres').innerHTML=html;
+}
+
+function openNewPresModal(){
+  var bpOptions=Object.keys(BASE_PRODUCTS).map(function(k){return '<option value="'+k+'">'+esc(BASE_PRODUCTS[k].name)+'</option>';}).join('');
+  var h='<div class="mtitle">New presentation / combo<button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">';
+  h+='<div><div class="flabel">Name</div><input class="finput" type="text" id="np-name" placeholder="e.g. Medialunas - Box of 6" autocomplete="off"></div>';
+  h+='<div><div class="flabel">Price ($)</div><input class="finput" type="number" id="np-price" placeholder="18" min="0"></div></div>';
+  h+='<div class="msec">What goes into this (base products)</div>';
+  h+='<div id="np-units">';
+  h+='<div class="unit-row"><select style="flex:1;padding:5px 9px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;font-family:inherit">'+bpOptions+'</select><input type="number" min="1" value="1" style="width:56px;padding:5px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;text-align:center"><button onclick="this.parentNode.remove()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-3)">&#x00D7;</button></div>';
+  h+='</div>';
+  h+='<button class="add-btn" onclick="addNewPresUnit()" style="margin:8px 0 16px">+ add ingredient</button>';
+  h+='<div class="mactions"><button class="btn accent" onclick="saveNewPres()" style="padding:10px;font-size:13px">Save</button></div>';
+  document.getElementById('mbox').innerHTML=h;
+  document.getElementById('overlay').className='overlay on';
+}
+function addNewPresUnit(){
+  var bpOptions=Object.keys(BASE_PRODUCTS).map(function(k){return '<option value="'+k+'">'+esc(BASE_PRODUCTS[k].name)+'</option>';}).join('');
+  var c=document.getElementById('np-units');var r=document.createElement('div');r.className='unit-row';
+  r.innerHTML='<select style="flex:1;padding:5px 9px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;font-family:inherit">'+bpOptions+'</select><input type="number" min="1" value="1" style="width:56px;padding:5px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;text-align:center"><button onclick="this.parentNode.remove()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-3)">&#x00D7;</button>';
+  c.appendChild(r);
+}
+function saveNewPres(){
+  var name=document.getElementById('np-name').value.trim();
+  var price=parseFloat(document.getElementById('np-price').value)||0;
+  if(!name)return alert('Enter a product name');
+  if(PRODS[name])return alert('A presentation with this name already exists');
+  var rows=document.getElementById('np-units').querySelectorAll('.unit-row');
+  var u={};
+  rows.forEach(function(row){
+    var sel=row.querySelector('select');var inp=row.querySelector('input[type="number"]');
+    if(sel&&inp&&sel.value)u[sel.value]=(u[sel.value]||0)+(parseInt(inp.value)||1);
+  });
+  PRODS[name]={price:price,u:u};
+  closeModal();renderAdminPres();
+}
+function addPresUnit(name,sid){
+  if(!PRODS[name])return;
+  // pick first base product not already used, or just first
+  var used=Object.keys(PRODS[name].u||{});
+  var firstUnused=Object.keys(BASE_PRODUCTS).find(function(k){return used.indexOf(k)<0;})||Object.keys(BASE_PRODUCTS)[0]||'';
+  if(!firstUnused)return alert('No base products available. Add some in the Base products tab first.');
+  PRODS[name].u[firstUnused]=(PRODS[name].u[firstUnused]||0)+1;
+  renderAdminPres();
+  // re-open
+  var body=document.getElementById('body-'+sid);
+  if(body){body.className='combo-body open';var arr=document.getElementById('arr-'+sid);if(arr)arr.className='combo-arrow open';}
+}
+function updateComboUnit(name,oldKey,newKey,sid){
+  if(!PRODS[name])return;
+  var qty=PRODS[name].u[oldKey]||1;
+  delete PRODS[name].u[oldKey];
+  PRODS[name].u[newKey]=(PRODS[name].u[newKey]||0)+qty;
+}
+function removePresUnit(name,key,sid){
+  if(!PRODS[name])return;
+  delete PRODS[name].u[key];
+  renderAdminPres();
+  var body=document.getElementById('body-'+sid);
+  if(body){body.className='combo-body open';var arr=document.getElementById('arr-'+sid);if(arr)arr.className='combo-arrow open';}
+}
+function deletePres(name){
+  if(!confirm('Delete "'+name+'"?'))return;
+  delete PRODS[name];renderAdminPres();
+}
+
+// ── SECTION 3: TEAM ──────────────────────────────────────────
+function renderAdminTeam(){
+  var html='<div class="admin-section">';
+  html+='<div class="admin-title">Team members <span class="admin-subtitle">Manage roles and access — passwords managed via Vercel</span></div>';
+  html+='<table class="team-table"><thead><tr><th>Name</th><th>Username</th><th>Role</th><th></th></tr></thead><tbody>';
+  TEAM.forEach(function(m){
+    var u=USERS.find(function(x){return x.displayName===m.name;})||{};
+    html+='<tr><td style="font-weight:600">'+esc(m.name)+'</td>';
+    html+='<td style="color:var(--text-2);font-family:monospace;font-size:12px">'+esc(u.username||'—')+'</td>';
+    html+='<td><select onchange="changeRole('+m.id+',this.value)" style="padding:4px 8px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;font-family:inherit"><option value="admin"'+(m.role==='admin'?' selected':'')+'>Admin</option><option value="team"'+(m.role==='team'?' selected':'')+'>Team</option></select></td>';
+    html+='<td>'+(m.id!==1?'<button class="btn" style="font-size:11px;padding:3px 9px;color:var(--red)" onclick="removeTeamMember('+m.id+')">Remove</button>':'')+'</td>';
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  html+='<div style="margin-top:14px"><button class="btn" onclick="openInviteModal()">+ invite team member</button></div></div>';
+  document.getElementById('admin-team').innerHTML=html;
+}
+
 function toggleCombo(id){var b=document.getElementById('body-'+id);var a=document.getElementById('arr-'+id);var open=b.classList.contains('open');b.className='combo-body'+(open?'':' open');a.className='combo-arrow'+(open?'':' open');}
-function updateCombo(name,unit,val){var n=parseInt(val)||0;if(n===0)delete PRODS[name].u[unit];else PRODS[name].u[unit]=n;}
-function flashSaved(id){var el=document.getElementById('flash-'+id);el.classList.add('show');setTimeout(function(){el.classList.remove('show');},2500);}
-function changeRole(id,role){var m=TEAM.find(function(x){return x.id===id;});if(m){m.role=role;renderAdmin();}}
-function removeTeamMember(id){if(confirm('Remove this team member?')){TEAM.splice(TEAM.findIndex(function(x){return x.id===id;}),1);renderAdmin();}}
+function updateCombo(name,unit,val){var n=parseInt(val)||0;if(!PRODS[name])return;if(n===0)delete PRODS[name].u[unit];else PRODS[name].u[unit]=n;}
+function flashSaved(id){var el=document.getElementById('flash-'+id);if(el){el.classList.add('show');setTimeout(function(){el.classList.remove('show');},2500);}}
+function changeRole(id,role){var m=TEAM.find(function(x){return x.id===id;});if(m){m.role=role;renderAdminTeam();}}
+function removeTeamMember(id){if(confirm('Remove this team member?')){TEAM.splice(TEAM.findIndex(function(x){return x.id===id;}),1);renderAdminTeam();}}
 function openInviteModal(){
   var h='<div class="mtitle">Invite team member<button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
-  h+='<div style="margin-bottom:10px"><div class="flabel">Name</div><input class="finput" type="text" id="inv-name" placeholder="Jane Smith"></div>';
-  h+='<div style="margin-bottom:10px"><div class="flabel">Email</div><input class="finput" type="email" id="inv-email" placeholder="jane@email.com"></div>';
-  h+='<div style="margin-bottom:16px"><div class="flabel">Role</div><select class="finput" id="inv-role"><option value="staff">Staff</option><option value="admin">Admin</option></select></div>';
-  h+='<button class="btn accent" onclick="saveInvite()" style="width:100%;padding:10px;font-size:13px">Send invite</button>';
+  h+='<div style="margin-bottom:10px"><div class="flabel">Full name</div><input class="finput" type="text" id="inv-name" placeholder="Maria Lopez"></div>';
+  h+='<div style="margin-bottom:10px"><div class="flabel">Username</div><input class="finput" type="text" id="inv-user" placeholder="maria" autocomplete="off"></div>';
+  h+='<div style="margin-bottom:10px"><div class="flabel">Password</div><input class="finput" type="password" id="inv-pw" placeholder="Password" autocomplete="new-password"></div>';
+  h+='<div style="margin-bottom:16px"><div class="flabel">Role</div><select class="finput" id="inv-role"><option value="team">Team</option><option value="admin">Admin</option></select></div>';
+  h+='<div class="mactions"><button class="btn accent" onclick="saveInvite()" style="padding:10px;font-size:13px">Add member</button></div>';
   document.getElementById('mbox').innerHTML=h;document.getElementById('overlay').className='overlay on';
 }
 function saveInvite(){
-  var name=document.getElementById('inv-name').value.trim();var email=document.getElementById('inv-email').value.trim();var role=document.getElementById('inv-role').value;
-  if(!name||!email)return alert('Please fill in name and email');
-  var initials=name.split(' ').map(function(s){return s[0];}).join('').toUpperCase().slice(0,2);
-  TEAM.push({id:TEAM.reduce(function(m,t){return Math.max(m,t.id);},0)+1,name:name,email:email,role:role,avatar:initials});
-  closeModal();renderAdmin();
+  var name=document.getElementById('inv-name').value.trim();
+  var username=document.getElementById('inv-user').value.trim().toLowerCase();
+  var pw=document.getElementById('inv-pw').value;
+  var role=document.getElementById('inv-role').value;
+  if(!name||!username||!pw)return alert('Please fill in all fields');
+  if(USERS.find(function(x){return x.username===username;}))return alert('Username already exists');
+  USERS.push({username:username,password:pw,role:role,displayName:name});
+  TEAM.push({id:TEAM.reduce(function(m,t){return Math.max(m,t.id);},0)+1,name:name,email:username+'@diblubakery.com',role:role,avatar:name.split(' ').map(function(s){return s[0];}).join('').toUpperCase().slice(0,2)});
+  closeModal();renderAdminTeam();
 }
 
 function addRow(){
@@ -997,16 +1423,34 @@ function addRow(){
   c.appendChild(r);
 }
 
-function renderAll(){renderOrders();updateTasksBadge();}
+function renderAll(){renderOrders();updateTasksBadge();updateAdminBadge();}
 function updateTasksBadge(){var n=TASKS.filter(function(t){return!t.done;}).length;document.getElementById('tasks-badge').textContent=n;}
+function getUnconfigured(){return Object.keys(PRODS).filter(function(name){var u=PRODS[name].u;return !u||Object.keys(u).length===0;});}
+function updateAdminBadge(){
+  if(currentRole!=='admin')return;
+  var n=getUnconfigured().length;
+  var badge=document.getElementById('admin-badge');
+  if(!badge)return;
+  badge.textContent=n;
+  badge.style.display=n>0?'':'none';
+}
+function showUnconfiguredPopup(){
+  var items=getUnconfigured();
+  if(!items.length)return;
+  var h='<div class="mtitle" style="color:var(--red)">⚠️ New products from Wix<button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
+  h+='<div style="font-size:13px;color:var(--text-2);margin-bottom:14px">The following products arrived from Wix but have no base products configured yet. They will appear in orders but won\'t count in production until configured.</div>';
+  items.forEach(function(name){
+    h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--red-light);border-radius:7px;margin-bottom:6px">';
+    h+='<span style="font-size:13px;font-weight:600;color:var(--red)">'+esc(name)+'</span>';
+    h+='<button class="btn accent" style="font-size:11px;padding:4px 11px" onclick="closeModal();showPage(\'admin\');setTimeout(function(){switchAdminTab(\'pres\');},50)">Configure →</button>';
+    h+='</div>';
+  });
+  h+='<button class="btn" onclick="closeModal()" style="width:100%;margin-top:8px;padding:9px">Remind me later</button>';
+  document.getElementById('mbox').innerHTML=h;
+  document.getElementById('overlay').className='overlay on';
+}
+// App starts at login screen — init happens in doLogin() after authentication
 
-addRow();
-renderOrders();
-updateTasksBadge();
-document.getElementById('p-wlabel').textContent=fmtWeek(pW);
-document.getElementById('t-wlabel').textContent=fmtWeek(tW);
-document.getElementById('r-wlabel').textContent=fmtWeek(rW);
-document.getElementById('fb-wlabel').textContent=fmtWeek(fbW);
 </script>
 </body>
 </html>
