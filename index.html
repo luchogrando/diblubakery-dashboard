@@ -837,6 +837,8 @@ function renderOrders(){
 }
 
 function getOrderValue(o){
+  // Use total from Wix/Sheet if available, otherwise calculate from PRODS
+  if(o.total!=null && o.total>0) return o.total;
   return o.items.reduce(function(s,it){return s+(PRODS[it.p]?PRODS[it.p].price*it.q:0);},0);
 }
 
