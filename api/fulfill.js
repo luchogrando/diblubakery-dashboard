@@ -48,7 +48,7 @@ module.exports = async function handler(req, res) {
     if (!order) return res.status(404).json({ error: `Order #${orderNumber} not found in Wix`, searchData });
 
     // Step 2: Create a fulfillment for the order
-    const fulfillUrl = `https://www.wixapis.com/ecom/v1/orders/${order.id}/fulfillments`;
+    const fulfillUrl = `https://www.wixapis.com/ecom/v1/fulfillments/orders/${order.id}/create-fulfillment`;
     const fulfillBody = {
       fulfillment: {
         lineItems: order.lineItems.map(function(item) {
