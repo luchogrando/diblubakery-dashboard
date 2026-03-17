@@ -30,52 +30,58 @@ module.exports = async function handler(req, res) {
 };
 
 function parseWixOrder(wix) {
-  // Wix eCommerce order structure
-  // https://dev.wix.com/docs/rest/api-reference/wix-e-commerce/orders/introduction
-  const buyerInfo = wix.buyerInfo || wix.billingInfo || {};
-  const shippingInfo = wix.shippingInfo || {};
+  // Contact info — from contact object
+  const contact = wix.contact || {};
+  const firstName = contact.firstName || '';
+  const lastName  = contact.lastName  || '';
+  const name = [firstName, lastName].filter(Boolean).join(' ') || wix.buyerEmail || 'Unknown';
+  const phone = contact.phone || '';
 
-  const firstName = buyerInfo.firstName || wix.recipientInfo?.firstName || '';
-  const lastName  = buyerInfo.lastName  || wix.recipientInfo?.lastName  || '';
-  const name = [firstName, lastName].filter(Boolean).join(' ') || 'Unknown';
+  // Order number
+  const wixOrderId = '#' + (wix.orderNumber || wix.id || Date.now());
 
-  const phone = buyerInfo.phone
-    || shippingInfo.shipmentDetails?.address?.phone
-    || '';
-
-  const wixOrderId = '#' + (wix.number || wix.id || Date.now());
-
-  // Parse line items → our items format [{p: productName, q: quantity}]
+  // Line items
   const lineItems = wix.lineItems || [];
   const items = lineItems.map(item => ({
-    p: item.name || item.productName?.original || 'Unknown product',
+    p: item.productName?.original || item.productName?.translated || item.name || 'Unknown product',
     q: item.quantity || 1,
   }));
 
-  // Total paid by customer (from Wix pricing summary)
-  const pricing = wix.priceSummary || wix.totals || {};
-  const total = parseFloat(pricing.total || pricing.grandTotal || 0) || null;
+  // Total — priceSummary.total.value
+  const pricing = wix.priceSummary || {};
+  const totalRaw = pricing.total;
+  const total = totalRaw?.amount
+    ? parseFloat(totalRaw.amount)
+    : totalRaw?.value
+      ? parseFloat(totalRaw.value)
+      : parseFloat(totalRaw) || null;
 
-  // Generate a unique id based on Wix order number + timestamp
-  const id = Date.now();
+  // Delivery type — if pickupMethod exists it's a pickup, otherwise delivery
+  const shippingInfo = wix.shippingInfo || {};
+  const logistics = shippingInfo.logistics || {};
+  const isPickup = !!(logistics.pickupDetails || logistics.pickupMethod || shippingInfo.pickupMethod);
+  const type = isPickup ? 'pickup' : 'delivery';
+
+  // Buyer note
+  const notes = wix.buyerNote || wix.checkoutCustomFields?.buyerNote || '';
 
   return {
-    id,
+    id: Date.now(),
     wix: wixOrderId,
     name,
     phone,
-    date: null,       // to be assigned manually in dashboard
-    shift: 'morning', // default, can be changed in dashboard
-    type: shippingInfo.deliveryOption === 'DELIVERY' ? 'delivery' : 'pickup',
+    date: null,
+    shift: 'morning',
+    type,
     fulfillment: 'unfulfilled',
     delivery: 'pending',
-    customDate: true, // starts as custom date — needs to be allocated
+    customDate: true,
     recurring: false,
-    notes: wix.buyerNote || '',
+    notes,
     items,
     total,
     edited: false,
     editedBy: '',
-    createdAt: new Date().toISOString(),
+    createdAt: wix.createdDate || new Date().toISOString(),
   };
 }
