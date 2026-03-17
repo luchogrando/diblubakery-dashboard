@@ -1,0 +1,8 @@
+{
+  "name": "diblubakery-dashboard",
+  "version": "1.0.0",
+  "description": "Di Blu Bakery operations dashboard",
+  "dependencies": {
+    "googleapis": "^144.0.0"
+  }
+}
