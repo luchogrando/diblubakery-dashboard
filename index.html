@@ -899,7 +899,7 @@ function setFulfillment(id){
 }
 function undoFulfillment(id){
   if(currentRole!=='admin')return alert('Only admin can undo fulfillment status.');
-  var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(o){o.fulfillment='unfulfilled';o.edited=true;o.editedBy=currentUser;apiUpdateOrder(id,{fulfillment:'unfulfilled',edited:true,editedBy:currentUser});}openModal(id);renderOrders();
+  var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(o){o.fulfillment='unfulfilled';o.edited=true;o.editedBy=currentUser;apiUpdateOrder(id,{fulfillment:'unfulfilled',edited:true,editedBy:currentUser});if(o.wix)apiFetch('/api/unfulfill',{method:'POST',body:JSON.stringify({wixOrderNumber:o.wix})}).catch(function(e){console.warn('Could not sync unfulfillment to Wix:',e.message);});}openModal(id);renderOrders();
 }
 function setDelivered(id){var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(o){o.delivery='delivered';o.edited=true;o.editedBy=currentUser;apiUpdateOrder(id,{delivery:'delivered',edited:true,editedBy:currentUser});}openModal(id);renderOrders();}
 function undoDelivered(id){
