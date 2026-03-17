@@ -57,7 +57,7 @@ function parseWixOrder(payload) {
 
   // Total — use subtotal (before discounts) or total
   const pricing = wix.priceSummary || {};
-  const total = parseFloat(pricing.subtotal?.value || pricing.total?.value || 0) || null;
+  const total = parseFloat(pricing.total?.value || pricing.subtotal?.value || 0) || null;
 
   // Shipping title for date/shift/type parsing
   const shippingInfo = wix.shippingInfo || {};
