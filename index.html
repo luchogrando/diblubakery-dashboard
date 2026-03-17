@@ -525,6 +525,40 @@ async function refreshOrders(){
   btn.textContent='↻ Refresh';btn.disabled=false;
 }
 
+async function apiLoadConfig(){
+  try {
+    var data = await apiFetch('/api/config');
+    // Replace BASE_PRODUCTS from Sheet
+    if(data.products){
+      Object.keys(BASE_PRODUCTS).forEach(function(k){ delete BASE_PRODUCTS[k]; });
+      Object.keys(data.products).forEach(function(k){ BASE_PRODUCTS[k] = data.products[k]; });
+      // rebuild UL
+      Object.keys(UL).forEach(function(k){ delete UL[k]; });
+      Object.keys(BASE_PRODUCTS).forEach(function(k){ UL[k] = BASE_PRODUCTS[k].name; });
+    }
+    // Replace PRODS from Sheet
+    if(data.presentations){
+      Object.keys(PRODS).forEach(function(k){ delete PRODS[k]; });
+      Object.keys(data.presentations).forEach(function(k){ PRODS[k] = data.presentations[k]; });
+    }
+    console.log('Config loaded from Sheet:', Object.keys(BASE_PRODUCTS).length, 'products,', Object.keys(PRODS).length, 'presentations');
+  } catch(e){
+    console.warn('Could not load config from Sheet:', e.message);
+  }
+}
+
+async function apiSaveConfig(){
+  try {
+    await apiFetch('/api/config', {
+      method: 'POST',
+      body: JSON.stringify({ products: BASE_PRODUCTS, presentations: PRODS })
+    });
+    console.log('Config saved to Sheet');
+  } catch(e){
+    console.warn('Could not save config:', e.message);
+  }
+}
+
 async function apiLoadOrders(){
   var prevUnconf = getUnconfigured().length;
   try {
@@ -534,7 +568,7 @@ async function apiLoadOrders(){
     ORDERS.forEach(function(o){
       (o.items||[]).forEach(function(it){
         if(it.p && !PRODS[it.p]){
-          PRODS[it.p] = {price:0, u:{}};
+          PRODS[it.p] = {u:{}};
         }
       });
     });
@@ -599,7 +633,8 @@ async function doLogin(){
   document.getElementById('nav-recurring').style.display='';
   // hide login, show app
   document.getElementById('login-screen').style.display='none';
-  // load orders from Sheet then render
+  // load config (products/presentations) then orders
+  await apiLoadConfig();
   await apiLoadOrders();
   addRow();
   renderOrders();
@@ -638,46 +673,10 @@ function switchRole(r){
   renderAll();
 }
 
-// BASE_PRODUCTS: the atomic units you actually bake
-var BASE_PRODUCTS = {
-  'medialuna':      {name:'Medialuna'},
-  'alf_maicena':    {name:'Alfajor maicena'},
-  'alf_almendra':   {name:'Alfajor almendra'},
-  'alf_vainilla':   {name:'Alfajor vainilla'},
-  'alf_choco':      {name:'Alfajor chocolate'},
-  'brownie':        {name:'Brownie'},
-  'cookie':         {name:'Cookie'},
-  'chipa':          {name:'Chipá'},
-  'chocotorta':     {name:'Chocotorta entera'},
-  'rogel':          {name:'Rogel entero'},
-  'pastafrola':     {name:'Pastafrola entera'}
-};
-
-// PRODS: presentations / combos sold on Wix (what customers order)
-var PRODS={
-  'Medialunas - Box of 12':          {price:25, u:{medialuna:12}},
-  'Medialunas - Box of 5':           {price:15, u:{medialuna:5}},
-  'Get to Know Me - Combo':          {price:18, u:{medialuna:2, alf_maicena:2, alf_almendra:2}},
-  'Alfajores Combo':                 {price:40, u:{alf_maicena:12, alf_almendra:12, alf_vainilla:12}},
-  'Maicena Alfajores - Box of 12':   {price:15, u:{alf_maicena:12}},
-  'Almond Alfajores - Box of 12':    {price:15, u:{alf_almendra:12}},
-  'Vanilla Alfajores - Box of 12':   {price:15, u:{alf_vainilla:12}},
-  'Chocolate Alfajores - Box of 6':  {price:18, u:{alf_choco:6}},
-  'Brownies - Box of 12':            {price:15, u:{brownie:12}},
-  'Cookies - Box of 3':              {price:15, u:{cookie:3}},
-  'Chipá':                           {price:12, u:{chipa:6}},
-  'Chocotorta':                      {price:30, u:{chocotorta:1}},
-  'Rogel':                           {price:25, u:{rogel:1}},
-  'Pastafrola Pie':                  {price:25, u:{pastafrola:1}}
-};
-
-// UL: display labels for base products (derived from BASE_PRODUCTS)
-function getUL(){
-  var ul={};
-  Object.keys(BASE_PRODUCTS).forEach(function(k){ul[k]=BASE_PRODUCTS[k].name;});
-  return ul;
-}
-var UL=getUL();
+// BASE_PRODUCTS and PRODS loaded from Sheet on login via apiLoadConfig()
+var BASE_PRODUCTS = {};
+var PRODS = {};
+var UL = {};
 
 var ORDERS=[];
 
@@ -777,7 +776,7 @@ function renderOrders(){
   // topbar total (admin only)
   if(currentRole==='admin'){
     var weekIsos=days.map(isoDate);
-    var weekTotal=ORDERS.filter(function(o){return o.date&&weekIsos.indexOf(o.date)>=0;}).reduce(function(s,o){return s+(PRODS[o.items[0]&&o.items[0].p]?o.items.reduce(function(a,it){return a+(PRODS[it.p]?PRODS[it.p].price*it.q:0);},0):0);},0);
+    var weekTotal=ORDERS.filter(function(o){return o.date&&weekIsos.indexOf(o.date)>=0;}).reduce(function(s,o){return s+(o.total||0);},0);
     // simpler: sum prices from order value stored
     weekTotal=ORDERS.filter(function(o){return o.date&&weekIsos.indexOf(o.date)>=0;}).reduce(function(s,o){return s+getOrderValue(o);},0);
     var tot=document.getElementById('topbar-total');
@@ -822,7 +821,7 @@ function renderOrders(){
 function getOrderValue(o){
   // Use total from Wix/Sheet if available, otherwise calculate from PRODS
   if(o.total!=null && o.total>0) return o.total;
-  return o.items.reduce(function(s,it){return s+(PRODS[it.p]?PRODS[it.p].price*it.q:0);},0);
+  return o.total || 0;
 }
 
 function renderCard(o){
@@ -1215,6 +1214,7 @@ function saveBaseProduct(key){
   UL[key]=val;
   delete editingBase[key];
   renderAdminBase();
+  apiSaveConfig();
 }
 
 function openNewBaseModal(){
@@ -1232,14 +1232,14 @@ function saveNewBase(){
   if(BASE_PRODUCTS[key])return alert('A base product with this name already exists');
   BASE_PRODUCTS[key]={name:name};
   UL[key]=name;
-  closeModal();renderAdminBase();
+  closeModal();renderAdminBase();apiSaveConfig();
 }
 function deleteBaseProduct(key){
   var usedIn=Object.keys(PRODS).filter(function(p){return PRODS[p].u&&PRODS[p].u[key];});
   if(usedIn.length)return alert('Cannot remove — used in: '+usedIn.join(', '));
   if(!confirm('Remove "'+BASE_PRODUCTS[key].name+'"?'))return;
   delete BASE_PRODUCTS[key];delete UL[key];
-  renderAdminBase();
+  renderAdminBase();apiSaveConfig();
 }
 
 // ── SECTION 2: PRESENTATIONS & COMBOS ────────────────────────
@@ -1311,7 +1311,7 @@ function openNewPresModal(){
   var h='<div class="mtitle">New presentation / combo<button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
   h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">';
   h+='<div><div class="flabel">Name</div><input class="finput" type="text" id="np-name" placeholder="e.g. Medialunas - Box of 6" autocomplete="off"></div>';
-  h+='<div><div class="flabel">Price ($)</div><input class="finput" type="number" id="np-price" placeholder="18" min="0"></div></div>';
+  h+='</div>';
   h+='<div class="msec">What goes into this (base products)</div>';
   h+='<div id="np-units">';
   h+='<div class="unit-row"><select style="flex:1;padding:5px 9px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;font-family:inherit">'+bpOptions+'</select><input type="number" min="1" value="1" style="width:56px;padding:5px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;text-align:center"><button onclick="this.parentNode.remove()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-3)">&#x00D7;</button></div>';
@@ -1329,7 +1329,7 @@ function addNewPresUnit(){
 }
 function saveNewPres(){
   var name=document.getElementById('np-name').value.trim();
-  var price=parseFloat(document.getElementById('np-price').value)||0;
+  var price=0;
   if(!name)return alert('Enter a product name');
   if(PRODS[name])return alert('A presentation with this name already exists');
   var rows=document.getElementById('np-units').querySelectorAll('.unit-row');
@@ -1338,7 +1338,7 @@ function saveNewPres(){
     var sel=row.querySelector('select');var inp=row.querySelector('input[type="number"]');
     if(sel&&inp&&sel.value)u[sel.value]=(u[sel.value]||0)+(parseInt(inp.value)||1);
   });
-  PRODS[name]={price:price,u:u};
+  PRODS[name]={u:u};
   closeModal();renderAdminPres();
 }
 function buildUnitsHtml(name,sid){
@@ -1391,7 +1391,7 @@ function removePresUnit(name,key,sid){
 }
 function deletePres(name){
   if(!confirm('Delete "'+name+'"?'))return;
-  delete PRODS[name];renderAdminPres();
+  delete PRODS[name];renderAdminPres();apiSaveConfig();
 }
 
 // ── SECTION 3: TEAM ──────────────────────────────────────────
@@ -1414,7 +1414,7 @@ function renderAdminTeam(){
 
 function toggleCombo(id){var b=document.getElementById('body-'+id);var a=document.getElementById('arr-'+id);var open=b.classList.contains('open');b.className='combo-body'+(open?'':' open');a.className='combo-arrow'+(open?'':' open');}
 function updateCombo(name,unit,val){var n=parseInt(val)||0;if(!PRODS[name])return;if(n===0)delete PRODS[name].u[unit];else PRODS[name].u[unit]=n;}
-function flashSaved(id){var el=document.getElementById('flash-'+id);if(el){el.classList.add('show');setTimeout(function(){el.classList.remove('show');},2500);}}
+function flashSaved(id){var el=document.getElementById('flash-'+id);if(el){el.classList.add('show');setTimeout(function(){el.classList.remove('show');},2500);}apiSaveConfig();}
 function changeRole(id,role){var m=TEAM.find(function(x){return String(x.id)===String(id);});if(m){m.role=role;renderAdminTeam();}}
 function removeTeamMember(id){if(confirm('Remove this team member?')){TEAM.splice(TEAM.findIndex(function(x){return String(x.id)===String(id);}),1);renderAdminTeam();}}
 function openInviteModal(){
