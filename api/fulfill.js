@@ -44,8 +44,9 @@ module.exports = async function handler(req, res) {
       }
     );
     const searchData = await searchRes.json();
+    console.log('Wix search status:', searchRes.status, 'data:', JSON.stringify(searchData));
     const order = searchData.orders?.[0];
-    if (!order) return res.status(404).json({ error: `Order #${orderNumber} not found in Wix` });
+    if (!order) return res.status(404).json({ error: `Order #${orderNumber} not found in Wix`, searchData });
 
     // Step 2: Create a fulfillment for the order
     const fulfillRes = await fetch(
