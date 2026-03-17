@@ -48,27 +48,31 @@ module.exports = async function handler(req, res) {
     if (!order) return res.status(404).json({ error: `Order #${orderNumber} not found in Wix`, searchData });
 
     // Step 2: Create a fulfillment for the order
-    const fulfillRes = await fetch(
-      `https://www.wixapis.com/ecom/v1/fulfillments/orders/${order.id}/fulfillments`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': WIX_API_KEY,
-          'wix-site-id': WIX_SITE_ID,
-        },
-        body: JSON.stringify({
-          fulfillment: {
-            lineItems: order.lineItems.map(function(item) {
-              return { id: item.id, quantity: item.quantity };
-            }),
-          }
+    const fulfillUrl = `https://www.wixapis.com/ecom/v1/orders/${order.id}/fulfillments`;
+    const fulfillBody = {
+      fulfillment: {
+        lineItems: order.lineItems.map(function(item) {
+          return { id: item.id, quantity: item.quantity };
         }),
       }
-    );
+    };
+    console.log('Fulfill URL:', fulfillUrl);
+    console.log('Fulfill body:', JSON.stringify(fulfillBody));
 
-    const fulfillData = await fulfillRes.json().catch(function(){return {};});
-    console.log('Wix fulfill status:', fulfillRes.status, 'data:', JSON.stringify(fulfillData));
+    const fulfillRes = await fetch(fulfillUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': WIX_API_KEY,
+        'wix-site-id': WIX_SITE_ID,
+      },
+      body: JSON.stringify(fulfillBody),
+    });
+
+    const fulfillText = await fulfillRes.text();
+    console.log('Wix fulfill status:', fulfillRes.status, 'data:', fulfillText);
+    let fulfillData = {};
+    try { fulfillData = JSON.parse(fulfillText); } catch(e) {}
 
     if (!fulfillRes.ok) {
       return res.status(500).json({ error: 'Failed to fulfill in Wix', detail: fulfillData });
