@@ -28,7 +28,7 @@ async function readOrders() {
   const { sheets, sheetId } = await getSheet();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: 'Sheet1!A2:P',
+    range: 'Sheet1!A2:Q',
   });
   const rows = res.data.values || [];
   return rows.map(rowToOrder).filter(o => o.id);
@@ -39,7 +39,7 @@ async function appendOrder(order) {
   const { sheets, sheetId } = await getSheet();
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetId,
-    range: 'Sheet1!A:P',
+    range: 'Sheet1!A:Q',
     valueInputOption: 'RAW',
     requestBody: { values: [orderToRow(order)] },
   });
@@ -50,7 +50,7 @@ async function updateOrder(id, fields) {
   const { sheets, sheetId } = await getSheet();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: 'Sheet1!A:P',
+    range: 'Sheet1!A:Q',
   });
   const rows = res.data.values || [];
   const rowIndex = rows.findIndex(r => r[0] === String(id));
@@ -63,7 +63,7 @@ async function updateOrder(id, fields) {
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: sheetId,
-    range: `Sheet1!A${sheetRow}:P${sheetRow}`,
+    range: `Sheet1!A${sheetRow}:Q${sheetRow}`,
     valueInputOption: 'RAW',
     requestBody: { values: [orderToRow(updated)] },
   });
@@ -73,7 +73,7 @@ async function updateOrder(id, fields) {
 // ── ROW ↔ ORDER CONVERSION ──────────────────────────────────────
 // Columns: id | wix_order | name | phone | date | shift | type |
 //          fulfillment | delivery | custom_date | recurring |
-//          notes | items | edited | edited_by | created_at
+//          notes | items | edited | edited_by | created_at | total
 
 function rowToOrder(r) {
   return {
@@ -93,6 +93,7 @@ function rowToOrder(r) {
     edited:       r[13] === 'true',
     editedBy:     r[14] || '',
     createdAt:    r[15] || '',
+    total:        r[16] ? parseFloat(r[16]) : null,
   };
 }
 
@@ -114,6 +115,7 @@ function orderToRow(o) {
     String(o.edited ? 'true' : 'false'),
     String(o.editedBy || ''),
     String(o.createdAt || new Date().toISOString()),
+    o.total != null ? String(o.total) : '',
   ];
 }
 
