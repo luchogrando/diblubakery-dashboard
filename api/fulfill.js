@@ -35,7 +35,6 @@ module.exports = async function handler(req, res) {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': WIX_API_KEY,
-          'wix-account-id': WIX_ACCOUNT_ID,
           'wix-site-id': WIX_SITE_ID,
         },
         body: JSON.stringify({
@@ -56,7 +55,6 @@ module.exports = async function handler(req, res) {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': WIX_API_KEY,
-          'wix-account-id': WIX_ACCOUNT_ID,
           'wix-site-id': WIX_SITE_ID,
         },
         body: JSON.stringify({
