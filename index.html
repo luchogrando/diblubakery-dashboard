@@ -492,10 +492,8 @@ function toggleSidebar(){
 }
 
 // ─── USERS & AUTH ───────────────────────────────────────────────
-var USERS = [
-  {username:'admin', password:'medialunas2023', role:'admin', displayName:'Admin'},
-  {username:'flavi', password:'hoboken',        role:'team',  displayName:'Flavi'}
-];
+// Users are managed via Vercel environment variables — no credentials in this file
+var USERS = [];
 // ↑ Change usernames and passwords here before publishing
 
 var currentRole = null;
@@ -562,26 +560,18 @@ async function doLogin(){
   document.getElementById('login-error').textContent='';
 
   try {
-    // Try API auth first (production)
     var data = await apiFetch('/api/auth', {
       method:'POST',
       body: JSON.stringify({username:u, password:p})
     });
     API_TOKEN = data.token;
-    var match = data.user;
-    currentRole = match.role;
-    currentUser = match.displayName;
+    currentRole = data.user.role;
+    currentUser = data.user.displayName;
   } catch(e){
-    // Fallback to local USERS (development / offline)
-    var localMatch = USERS.find(function(x){return x.username===u&&x.password===p;});
-    if(!localMatch){
-      document.getElementById('login-error').textContent='Incorrect username or password.';
-      document.getElementById('login-pass').value='';
-      btn.textContent='Sign in';btn.disabled=false;
-      return;
-    }
-    currentRole = localMatch.role;
-    currentUser = localMatch.displayName;
+    document.getElementById('login-error').textContent='Incorrect username or password.';
+    document.getElementById('login-pass').value='';
+    btn.textContent='Sign in';btn.disabled=false;
+    return;
   }
 
   btn.textContent='Sign in';btn.disabled=false;
@@ -896,7 +886,17 @@ function saveDateTime(id){
   }
   openModal(id);renderOrders();
 }
-function setFulfillment(id){var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(o){o.fulfillment='fulfilled';o.edited=true;o.editedBy=currentUser;apiUpdateOrder(id,{fulfillment:'fulfilled',edited:true,editedBy:currentUser});}openModal(id);renderOrders();}
+function setFulfillment(id){
+  var o=ORDERS.find(function(x){return String(x.id)===String(id);});
+  if(o){
+    o.fulfillment='fulfilled';o.edited=true;o.editedBy=currentUser;
+    apiUpdateOrder(id,{fulfillment:'fulfilled',edited:true,editedBy:currentUser});
+    // Also mark as fulfilled in Wix
+    if(o.wix) apiFetch('/api/fulfill',{method:'POST',body:JSON.stringify({wixOrderNumber:o.wix})})
+      .catch(function(e){console.warn('Could not sync fulfillment to Wix:',e.message);});
+  }
+  openModal(id);renderOrders();
+}
 function undoFulfillment(id){
   if(currentRole!=='admin')return alert('Only admin can undo fulfillment status.');
   var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(o){o.fulfillment='unfulfilled';o.edited=true;o.editedBy=currentUser;apiUpdateOrder(id,{fulfillment:'unfulfilled',edited:true,editedBy:currentUser});}openModal(id);renderOrders();
