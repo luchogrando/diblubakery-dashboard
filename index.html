@@ -654,9 +654,7 @@ var PRODS={
   'Chipá':                           {price:12, u:{chipa:6}},
   'Chocotorta':                      {price:30, u:{chocotorta:1}},
   'Rogel':                           {price:25, u:{rogel:1}},
-  'Pastafrola Pie':                  {price:25, u:{pastafrola:1}},
-  // ↓ Example: product that arrived from Wix but not yet configured
-  'Holiday Cookie Box':              {price:22, u:{}, _fromWix:true}
+  'Pastafrola Pie':                  {price:25, u:{pastafrola:1}}
 };
 
 // UL: display labels for base products (derived from BASE_PRODUCTS)
@@ -667,46 +665,17 @@ function getUL(){
 }
 var UL=getUL();
 
-var ORDERS=[
-  {id:1,wix:'#1001',name:'Jennifer Martinez',phone:'+12015559001',date:'2026-03-20',shift:'morning',type:'delivery',fulfillment:'unfulfilled',delivery:'pending',customDate:false,recurring:false,edited:false,editedBy:'',notes:'',items:[{p:'Medialunas - Box of 12',q:1},{p:'Alfajores Combo',q:1}]},
-  {id:2,wix:'#1002',name:'Sarah Kim',phone:'+12015559002',date:'2026-03-20',shift:'morning',type:'pickup',fulfillment:'unfulfilled',delivery:'pending',customDate:false,recurring:false,edited:false,editedBy:'',notes:'no peanuts',items:[{p:'Alfajores Combo',q:1}]},
-  {id:3,wix:'#1003',name:'Tom Robinson',phone:'+12015559003',date:'2026-03-20',shift:'morning',type:'pickup',fulfillment:'unfulfilled',delivery:'pending',customDate:false,recurring:false,edited:false,editedBy:'',notes:'',items:[{p:'Pastafrola Pie',q:1},{p:'Chipá',q:1}]},
-  {id:4,wix:'#1004',name:'Lisa Dawson',phone:'+12015559004',date:'2026-03-20',shift:'afternoon',type:'delivery',fulfillment:'unfulfilled',delivery:'pending',customDate:false,recurring:false,edited:true,editedBy:'Maria (staff)',notes:'',items:[{p:'Medialunas - Box of 12',q:2},{p:'Cookies - Box of 3',q:1}]},
-  {id:5,wix:'#1005',name:'Carlos Vega',phone:'+12015559005',date:'2026-03-20',shift:'afternoon',type:'pickup',fulfillment:'unfulfilled',delivery:'pending',customDate:false,recurring:true,edited:false,editedBy:'',notes:'',items:[{p:'Chocotorta',q:1}]},
-  {id:6,wix:'#1006',name:'Ana Perez',phone:'+12015559006',date:'2026-03-21',shift:'morning',type:'pickup',fulfillment:'unfulfilled',delivery:'pending',customDate:false,recurring:false,edited:false,editedBy:'',notes:'extra DDL',items:[{p:'Vanilla Alfajores - Box of 12',q:1},{p:'Maicena Alfajores - Box of 12',q:1},{p:'Get to Know Me - Combo',q:1}]},
-  {id:7,wix:'#1007',name:'Mike Brown',phone:'+12015559007',date:'2026-03-21',shift:'morning',type:'delivery',fulfillment:'unfulfilled',delivery:'pending',customDate:false,recurring:false,edited:false,editedBy:'',notes:'',items:[{p:'Medialunas - Box of 12',q:2}]},
-  {id:8,wix:'#1008',name:'Rachel Stevens',phone:'+12015559008',date:'2026-03-21',shift:'morning',type:'pickup',fulfillment:'unfulfilled',delivery:'pending',customDate:false,recurring:false,edited:false,editedBy:'',notes:'',items:[{p:'Chocolate Alfajores - Box of 6',q:1},{p:'Brownies - Box of 12',q:1},{p:'Chipá',q:1}]},
-  {id:9,wix:'#1009',name:'David Lopez',phone:'+12015559009',date:'2026-03-21',shift:'afternoon',type:'delivery',fulfillment:'fulfilled',delivery:'delivered',customDate:false,recurring:false,edited:false,editedBy:'',notes:'birthday note',items:[{p:'Rogel',q:1},{p:'Medialunas - Box of 5',q:2},{p:'Cookies - Box of 3',q:2}]},
-  {id:10,wix:'#1010',name:'Emma Wilson',phone:'+12015559010',date:'2026-03-21',shift:'afternoon',type:'pickup',fulfillment:'unfulfilled',delivery:'pending',customDate:false,recurring:false,edited:false,editedBy:'',notes:'',items:[{p:'Alfajores Combo',q:1},{p:'Medialunas - Box of 12',q:1}]},
-  {id:11,wix:'#1011',name:'James O\'Brien',phone:'+12015559011',date:'2026-03-22',shift:'morning',type:'delivery',fulfillment:'unfulfilled',delivery:'pending',customDate:false,recurring:false,edited:false,editedBy:'',notes:'',items:[{p:'Maicena Alfajores - Box of 12',q:1},{p:'Medialunas - Box of 5',q:1}]},
-  {id:12,wix:'#1012',name:'Sofia Torres',phone:'+12015559012',date:'2026-03-22',shift:'afternoon',type:'pickup',fulfillment:'unfulfilled',delivery:'pending',customDate:false,recurring:false,edited:true,editedBy:'Admin',notes:'corporate event',items:[{p:'Medialunas - Box of 12',q:2},{p:'Alfajores Combo',q:1},{p:'Brownies - Box of 12',q:1}]},
-  {id:13,wix:'#1013',name:'Laura Hernandez',phone:'+12015559013',date:'2026-03-22',shift:'morning',type:'pickup',fulfillment:'unfulfilled',delivery:'pending',customDate:false,recurring:false,edited:false,editedBy:'',notes:'',items:[{p:'Maicena Alfajores - Box of 12',q:2}]},
-  {id:14,wix:'#1014',name:'Mark Johnson',phone:'+12015559014',date:'2026-03-22',shift:'afternoon',type:'delivery',fulfillment:'unfulfilled',delivery:'pending',customDate:false,recurring:false,edited:false,editedBy:'',notes:'',items:[{p:'Medialunas - Box of 12',q:1},{p:'Chocotorta',q:1}]},
-  {id:15,wix:'#1015',name:'Paula Gutierrez',phone:'+12015559015',date:null,shift:null,type:'delivery',fulfillment:'unfulfilled',delivery:'pending',customDate:true,recurring:false,edited:false,editedBy:'',notes:'custom date TBD',items:[{p:'Alfajores Combo',q:1},{p:'Medialunas - Box of 12',q:1}]},
-  {id:16,wix:'#1016',name:'Roberto Sanchez',phone:'+12015559016',date:null,shift:null,type:'pickup',fulfillment:'unfulfilled',delivery:'pending',customDate:true,recurring:false,edited:false,editedBy:'',notes:'custom date TBD',items:[{p:'Maicena Alfajores - Box of 12',q:1},{p:'Pastafrola Pie',q:1}]}
-];
+var ORDERS=[];
 
-var TASKS=[
-  {id:1,date:'2026-03-20',title:'Bake medialunas batch 1',createdBy:'Admin',done:false,doneBy:'',comment:''},
-  {id:2,date:'2026-03-20',title:'Prepare alfajores filling',createdBy:'Admin',done:true,doneBy:'Maria (staff)',comment:'Done, used extra DDL as requested'},
-  {id:3,date:'2026-03-20',title:'Pack orders for morning shift',createdBy:'Maria (staff)',done:false,doneBy:'',comment:''},
-  {id:4,date:'2026-03-21',title:'Bake medialunas batch 2',createdBy:'Admin',done:false,doneBy:'',comment:''},
-  {id:5,date:'2026-03-21',title:'Clean kitchen after morning',createdBy:'Maria (staff)',done:false,doneBy:'',comment:''},
-  {id:6,date:'2026-03-22',title:'Bake weekend batch',createdBy:'Admin',done:false,doneBy:'',comment:''},
-  {id:7,date:'2026-03-22',title:'Restock packaging supplies',createdBy:'Maria (staff)',done:false,doneBy:'',comment:''}
-];
-var taskIdCounter=8;
+var TASKS=[];
+var taskIdCounter=1;
 
-var RECURRING=[
-  {id:1,name:'Fernanda Rivas',phone:'+12015558001',dayOfWeek:5,shift:'morning',type:'pickup',items:[{p:'Medialunas - Box of 12',q:2}],active:true,activatedThisWeek:false},
-  {id:2,name:'Office Catering Co.',phone:'+12015558002',dayOfWeek:1,shift:'morning',type:'delivery',items:[{p:'Alfajores Combo',q:2},{p:'Medialunas - Box of 12',q:3}],active:true,activatedThisWeek:true}
-];
-var recIdCounter=3;
+var RECURRING=[];
+var recIdCounter=1;
 
 var TEAM=[
   {id:1,name:'Admin',email:'admin@diblubakery.com',role:'admin',avatar:'A'},
-  {id:2,name:'Maria Lopez',email:'maria@diblubakery.com',role:'staff',avatar:'ML'},
-  {id:3,name:'Diego Ruiz',email:'diego@diblubakery.com',role:'staff',avatar:'DR'}
+  {id:2,name:'Flavi',email:'flavi@diblubakery.com',role:'team',avatar:'F'}
 ];
 
 var FEEDBACK_SENT={};
