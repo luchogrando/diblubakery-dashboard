@@ -52,6 +52,10 @@ function parseWixOrder(wix) {
     q: item.quantity || 1,
   }));
 
+  // Total paid by customer (from Wix pricing summary)
+  const pricing = wix.priceSummary || wix.totals || {};
+  const total = parseFloat(pricing.total || pricing.grandTotal || 0) || null;
+
   // Generate a unique id based on Wix order number + timestamp
   const id = Date.now();
 
@@ -69,6 +73,7 @@ function parseWixOrder(wix) {
     recurring: false,
     notes: wix.buyerNote || '',
     items,
+    total,
     edited: false,
     editedBy: '',
     createdAt: new Date().toISOString(),
