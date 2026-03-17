@@ -527,7 +527,7 @@ async function refreshOrders(){
   btn.textContent='↻ Refresh';btn.disabled=false;
 }
 
-
+async function apiLoadOrders(){
   try {
     var data = await apiFetch('/api/orders');
     if(data.orders && data.orders.length) ORDERS = data.orders;
