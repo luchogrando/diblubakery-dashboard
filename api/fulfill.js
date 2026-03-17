@@ -54,8 +54,8 @@ module.exports = async function handler(req, res) {
         lineItems: order.lineItems.map(function(item) {
           return { id: item.id, quantity: item.quantity };
         }),
+        suppressFulfillmentEmail: true,
       },
-      suppressFulfillmentEmail: true,
     };
     console.log('Fulfill URL:', fulfillUrl);
     console.log('Fulfill body:', JSON.stringify(fulfillBody));
