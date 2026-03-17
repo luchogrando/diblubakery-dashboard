@@ -30,89 +30,80 @@ module.exports = async function handler(req, res) {
   }
 };
 
-function parseWixOrder(wix) {
-  // Contact info
+function parseWixOrder(payload) {
+  // Wix wraps everything in a "data" object
+  const wix = payload.data || payload;
+
+  // Contact
   const contact = wix.contact || {};
-  const billingInfo = wix.billingInfo || {};
-  const shippingInfo = wix.shippingInfo || {};
-
-  const firstName = contact.firstName || billingInfo.contactDetails?.firstName || '';
-  const lastName  = contact.lastName  || billingInfo.contactDetails?.lastName  || '';
-  const name = [firstName, lastName].filter(Boolean).join(' ') || wix.buyerEmail || 'Unknown';
-
+  const name = [contact.name?.first, contact.name?.last].filter(Boolean).join(' ')
+    || wix.billingInfo?.contactDetails?.firstName
+    || wix.buyerEmail
+    || 'Unknown';
   const phone = contact.phone
-    || billingInfo.contactDetails?.phone
-    || shippingInfo.shippingDestination?.contactDetails?.phone
+    || contact.phones?.[0]?.phone
+    || wix.billingInfo?.contactDetails?.phone
     || '';
 
   // Order number
   const wixOrderId = '#' + (wix.orderNumber || wix.id || Date.now());
 
-  // Shipping title — e.g. "Pick-up Jersey City 3/20, Friday, March 20th 5pm-7pm"
-  const shippingTitle = shippingInfo.title
-    || shippingInfo.logistics?.deliveryTime
-    || shippingInfo.deliveryOption
-    || '';
+  // Line items — itemName is the correct field
+  const lineItems = wix.lineItems || [];
+  const items = lineItems.map(item => ({
+    p: item.itemName || item.productName?.original || item.name || 'Unknown product',
+    q: item.quantity || 1,
+  }));
 
-  // Delivery type
+  // Total — use subtotal (before discounts) or total
+  const pricing = wix.priceSummary || {};
+  const total = parseFloat(pricing.subtotal?.value || pricing.total?.value || 0) || null;
+
+  // Shipping title for date/shift/type parsing
+  const shippingInfo = wix.shippingInfo || {};
+  const shippingTitle = shippingInfo.title || '';
   const titleLower = shippingTitle.toLowerCase();
-  const isCustomDate = titleLower.includes('custom date') || titleLower.includes('custom');
-  const isPickup = titleLower.includes('pick up') || titleLower.includes('pickup') || titleLower.includes('pick-up');
+
+  // Type — STORE_PICKUP in logistics means pickup
+  const pickupMethod = shippingInfo.logistics?.shippingDestination?.pickupMethod || '';
+  const isPickup = pickupMethod === 'STORE_PICKUP'
+    || titleLower.includes('pick up')
+    || titleLower.includes('pickup')
+    || titleLower.includes('pick-up');
   const type = isPickup ? 'pickup' : 'delivery';
 
-  // Parse date from title — looks for patterns like "3/20", "March 20", "Mar 20"
+  // Custom date
+  const isCustomDate = titleLower.includes('custom date') || titleLower.includes('custom');
+
+  // Parse date from title e.g. "monday 9-11am", "Pick-up Jersey City 3/20"
   let date = null;
   if (!isCustomDate) {
-    // Try MM/DD pattern e.g. "3/20"
     const slashMatch = shippingTitle.match(/(\d{1,2})\/(\d{1,2})/);
     if (slashMatch) {
       const month = slashMatch[1].padStart(2,'0');
       const day   = slashMatch[2].padStart(2,'0');
-      const year  = new Date().getFullYear();
-      date = `${year}-${month}-${day}`;
+      date = `${new Date().getFullYear()}-${month}-${day}`;
     } else {
-      // Try "March 20th" / "Mar 20" pattern
       const months = {january:'01',february:'02',march:'03',april:'04',may:'05',june:'06',july:'07',august:'08',september:'09',october:'10',november:'11',december:'12',jan:'01',feb:'02',mar:'03',apr:'04',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
       const monthMatch = shippingTitle.match(/([a-z]+)\s+(\d{1,2})/i);
       if (monthMatch) {
         const m = months[monthMatch[1].toLowerCase()];
-        if (m) {
-          const day = monthMatch[2].padStart(2,'0');
-          const year = new Date().getFullYear();
-          date = `${year}-${m}-${day}`;
-        }
+        if (m) date = `${new Date().getFullYear()}-${m}-${monthMatch[2].padStart(2,'0')}`;
       }
     }
   }
 
-  // Parse shift from title — morning if "am" or hour < 12, afternoon otherwise
+  // Parse shift from title — "9-11am", "morning" = morning; "pm", "afternoon" = afternoon
   let shift = 'morning';
   if (!isCustomDate) {
-    const timeMatch = shippingTitle.match(/(\d{1,2})(am|pm)/i);
+    const timeMatch = shippingTitle.match(/(\d{1,2})[:-]?\d*\s*(am|pm)/i);
     if (timeMatch) {
-      const hour = parseInt(timeMatch[1]);
       const ampm = timeMatch[2].toLowerCase();
-      shift = (ampm === 'am' || (ampm === 'pm' && hour === 12 ? false : hour < 12)) ? 'morning' : 'afternoon';
+      shift = ampm === 'am' ? 'morning' : 'afternoon';
     } else if (titleLower.includes('afternoon') || titleLower.includes('pm')) {
       shift = 'afternoon';
     }
   }
-
-  // Line items
-  const lineItems = wix.lineItems || [];
-  const items = lineItems.map(item => ({
-    p: item.productName?.original || item.productName?.translated || item.name || 'Unknown product',
-    q: item.quantity || 1,
-  }));
-
-  // Total
-  const pricing = wix.priceSummary || {};
-  const totalRaw = pricing.total;
-  const total = totalRaw?.amount
-    ? parseFloat(totalRaw.amount)
-    : totalRaw?.value
-      ? parseFloat(totalRaw.value)
-      : parseFloat(totalRaw) || null;
 
   return {
     id: Date.now(),
@@ -120,7 +111,7 @@ function parseWixOrder(wix) {
     name,
     phone,
     date: isCustomDate ? null : date,
-    shift: isCustomDate ? 'morning' : shift,
+    shift,
     type,
     fulfillment: 'unfulfilled',
     delivery: 'pending',
