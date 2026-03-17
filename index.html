@@ -1341,6 +1341,22 @@ function saveNewPres(){
   PRODS[name]={price:price,u:u};
   closeModal();renderAdminPres();
 }
+function buildUnitsHtml(name,sid){
+  var units=PRODS[name].u||{};
+  var html='';
+  Object.keys(units).forEach(function(u){
+    html+='<div class="unit-row" id="ur-'+sid+'-'+u+'">';
+    html+='<select style="flex:1;padding:5px 9px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;font-family:inherit" onchange="updateComboUnit(\''+name.replace(/'/g,"\\'")+'\',\''+u+'\',this.value,\''+sid+'\')">';
+    Object.keys(BASE_PRODUCTS).forEach(function(bk){
+      html+='<option value="'+bk+'"'+(bk===u?' selected':'')+'>'+esc(BASE_PRODUCTS[bk].name)+'</option>';
+    });
+    html+='</select>';
+    html+='<input type="number" min="0" value="'+(units[u]||0)+'" style="width:60px;padding:5px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;text-align:center" onchange="updateCombo(\''+name.replace(/'/g,"\\'")+'\',\''+u+'\',this.value)">';
+    html+='<button class="task-btn" style="color:var(--red)" onclick="removePresUnit(\''+name.replace(/'/g,"\\'")+'\',\''+u+'\',\''+sid+'\')">×</button>';
+    html+='</div>';
+  });
+  return html;
+}
 function addPresUnit(name,sid){
   if(!PRODS[name])return;
   // pick first base product not already used, or just first
@@ -1348,12 +1364,17 @@ function addPresUnit(name,sid){
   var firstUnused=Object.keys(BASE_PRODUCTS).find(function(k){return used.indexOf(k)<0;})||Object.keys(BASE_PRODUCTS)[0]||'';
   if(!firstUnused)return alert('No base products available. Add some in the Base products tab first.');
   PRODS[name].u[firstUnused]=(PRODS[name].u[firstUnused]||0)+1;
-  renderAdminPres();
-  // re-open and scroll into view
-  var body=document.getElementById('body-'+sid);
-  if(body){body.className='combo-body open';var arr=document.getElementById('arr-'+sid);if(arr)arr.className='combo-arrow open';}
-  var card=document.getElementById('card-'+sid);
-  if(card)setTimeout(function(){card.scrollIntoView({behavior:'smooth',block:'center'});},50);
+  // update only the units div — no full re-render, no scroll jump
+  var unitsEl=document.getElementById('units-'+sid);
+  if(unitsEl){
+    unitsEl.innerHTML=buildUnitsHtml(name,sid);
+    var body=document.getElementById('body-'+sid);
+    if(body){body.className='combo-body open';var arr=document.getElementById('arr-'+sid);if(arr)arr.className='combo-arrow open';}
+  } else {
+    renderAdminPres();
+    var body=document.getElementById('body-'+sid);
+    if(body){body.className='combo-body open';var arr=document.getElementById('arr-'+sid);if(arr)arr.className='combo-arrow open';}
+  }
 }
 function updateComboUnit(name,oldKey,newKey,sid){
   if(!PRODS[name])return;
