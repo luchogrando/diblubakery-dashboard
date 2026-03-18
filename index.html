@@ -592,6 +592,12 @@ async function apiSaveRecurring(){
   } catch(e){ console.warn('Could not save recurring:', e.message); }
 }
 
+async function apiSaveUsers(users){
+  try {
+    await apiFetch('/api/users', { method:'POST', body: JSON.stringify({ users: users }) });
+  } catch(e){ console.warn('Could not save users:', e.message); }
+}
+
 async function apiLoadOrders(){
   var prevUnconf = getUnconfigured().length;
   try {
@@ -642,6 +648,9 @@ async function doLogin(){
     API_TOKEN = data.token;
     currentRole = data.user.role;
     currentUser = data.user.displayName;
+    if(data.team && data.team.length){
+      USERS = data.team.map(function(u){ return {username:u.username,role:u.role,displayName:u.displayName,password:''}; });
+    }
   } catch(e){
     document.getElementById('login-error').textContent='Incorrect username or password.';
     document.getElementById('login-pass').value='';
@@ -1448,7 +1457,10 @@ function renderAdminTeam(){
     html+='<tr><td style="font-weight:600">'+esc(m.name)+'</td>';
     html+='<td style="color:var(--text-2);font-family:monospace;font-size:12px">'+esc(m.username||'—')+'</td>';
     html+='<td><select onchange="changeRole('+m.id+',this.value)" style="padding:4px 8px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;font-family:inherit"><option value="admin"'+(m.role==='admin'?' selected':'')+'>Admin</option><option value="team"'+(m.role==='team'?' selected':'')+'>Team</option></select></td>';
-    html+='<td>'+(m.id!==1?'<button class="btn" style="font-size:11px;padding:3px 9px;color:var(--red)" onclick="removeTeamMember('+m.id+')">Remove</button>':'')+'</td>';
+    html+='<td style="display:flex;gap:6px">';
+    html+='<button class="btn" style="font-size:11px;padding:3px 9px" onclick="openChangePasswordModal(\''+m.username+'\')">Password</button>';
+    if(m.username!==currentUser)html+='<button class="btn" style="font-size:11px;padding:3px 9px;color:var(--red)" onclick="removeTeamMember('+m.id+')">Remove</button>';
+    html+='</td>';
     html+='</tr>';
   });
   html+='</tbody></table>';
@@ -1466,6 +1478,7 @@ function changeRole(id,role){
   var u=USERS.find(function(x){return x.username===m.username;});
   if(u)u.role=role;
   renderAdminTeam();
+  apiSaveUsers(USERS);
 }
 function removeTeamMember(id){
   var m=TEAM.find(function(x){return String(x.id)===String(id);});
@@ -1475,6 +1488,7 @@ function removeTeamMember(id){
   TEAM.splice(TEAM.findIndex(function(x){return String(x.id)===String(id);}),1);
   USERS.splice(USERS.findIndex(function(x){return x.username===m.username;}),1);
   renderAdminTeam();
+  apiSaveUsers(USERS);
 }
 function openInviteModal(){
   var h='<div class="mtitle">Invite team member<button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
@@ -1494,8 +1508,29 @@ function saveInvite(){
   if(USERS.find(function(x){return x.username===username;}))return alert('Username already exists');
   USERS.push({username:username,password:pw,role:role,displayName:name});
   rebuildTeam();
+  apiSaveUsers(USERS);
   closeModal();renderAdminTeam();
-  alert('Member added! Note: to make credentials permanent, update the USERS env var in Vercel.');
+}
+
+function openChangePasswordModal(username){
+  var h='<div class="mtitle">Change password<button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
+  h+='<div style="margin-bottom:4px;font-size:13px;color:var(--text-2)">User: <b>'+esc(username)+'</b></div>';
+  h+='<div style="margin-bottom:10px"><div class="flabel">New password</div><input class="finput" type="password" id="cpw-new" placeholder="New password" autocomplete="new-password"></div>';
+  h+='<div style="margin-bottom:16px"><div class="flabel">Confirm password</div><input class="finput" type="password" id="cpw-confirm" placeholder="Confirm password"></div>';
+  h+='<div class="mactions"><button class="btn accent" onclick="saveNewPassword(\''+username+'\')">Save password</button></div>';
+  document.getElementById('mbox').innerHTML=h;document.getElementById('overlay').className='overlay on';
+  setTimeout(function(){document.getElementById('cpw-new').focus();},100);
+}
+function saveNewPassword(username){
+  var pw=document.getElementById('cpw-new').value;
+  var cf=document.getElementById('cpw-confirm').value;
+  if(!pw)return alert('Enter a password');
+  if(pw!==cf)return alert('Passwords do not match');
+  var u=USERS.find(function(x){return x.username===username;});
+  if(!u)return alert('User not found');
+  u.password=pw;
+  apiSaveUsers(USERS);
+  closeModal();
 }
 
 function addRow(){
