@@ -11,7 +11,7 @@ module.exports = async function handler(req, res) {
 
   const auth = req.headers.authorization || '';
   const token = auth.replace('Bearer ', '');
-  if (!isAdminToken(token)) return res.status(401).json({ error: 'Unauthorized' });
+  if (!(await isAdminToken(token))) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
     if (req.method === 'GET') {
@@ -26,7 +26,21 @@ module.exports = async function handler(req, res) {
     if (req.method === 'POST') {
       const { users } = req.body || {};
       if (!Array.isArray(users)) return res.status(400).json({ error: 'users must be array' });
-      await writeUsers(users);
+
+      // Read existing users from Sheet to preserve passwords not sent from client
+      const existing = await readUsers();
+      const existingMap = {};
+      existing.forEach(u => { existingMap[u.username] = u; });
+
+      // Merge: keep existing password if new one is empty
+      const merged = users.map(u => ({
+        username: u.username || '',
+        password: u.password || existingMap[u.username]?.password || '',
+        role: u.role || 'team',
+        displayName: u.displayName || u.name || u.username || '',
+      })).filter(u => u.username);
+
+      await writeUsers(merged);
       return res.status(200).json({ ok: true });
     }
 
@@ -38,7 +52,6 @@ module.exports = async function handler(req, res) {
 };
 
 async function isAdminToken(token) {
-  // Verify token is valid and belongs to an admin
   try {
     const { readUsers } = require('./_sheets');
     const decoded = Buffer.from(token, 'base64').toString('utf8');
