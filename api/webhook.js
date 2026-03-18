@@ -10,7 +10,7 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const secret = req.headers['x-wix-signature'] || req.headers['x-webhook-secret'];
+  const secret = req.headers['x-wix-signature'] || req.headers['x-webhook-secret'] || req.query?.secret;
   if (process.env.WIX_WEBHOOK_SECRET && secret !== process.env.WIX_WEBHOOK_SECRET) {
     return res.status(401).json({ error: 'Invalid webhook secret' });
   }
