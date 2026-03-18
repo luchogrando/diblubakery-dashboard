@@ -1466,8 +1466,8 @@ function renderAdminTeam(){
     html+='<tr><td style="font-weight:600">'+esc(m.name||m.displayName||m.username)+'</td>';
     html+='<td style="color:var(--text-2);font-family:monospace;font-size:12px">'+esc(m.username||'—')+'</td>';
     html+='<td><select onchange="changeRole('+m.id+',this.value)" style="padding:4px 8px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;font-family:inherit"><option value="admin"'+(m.role==='admin'?' selected':'')+'>Admin</option><option value="team"'+(m.role==='team'?' selected':'')+'>Team</option></select></td>';
-    html+='<td style="display:flex;gap:6px">';
-    html+='<button class="btn" style="font-size:11px;padding:3px 9px" onclick="openChangePasswordModal(\''+m.username+'\')">Password</button>';
+    html+='<td style="white-space:nowrap">';
+    html+='<button class="btn" style="font-size:11px;padding:3px 9px;margin-right:4px" onclick="openChangePasswordModal(\''+m.username+'\')">Password</button>';
     if(m.username!==currentUser)html+='<button class="btn" style="font-size:11px;padding:3px 9px;color:var(--red)" onclick="removeTeamMember('+m.id+')">Remove</button>';
     html+='</td>';
     html+='</tr>';
