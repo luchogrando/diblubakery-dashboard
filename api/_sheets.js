@@ -300,4 +300,37 @@ async function writeRecurring(recurring) {
   }
 }
 
-module.exports = { readOrders, appendOrder, updateOrder, readProducts, writeProducts, readPresentations, writePresentations, readTasks, writeTasks, readRecurring, writeRecurring };
+
+// ── USERS ─────────────────────────────────────────────────────
+// Users tab: A=username, B=password, C=role, D=displayName
+
+async function readUsers() {
+  try {
+    const data = await sheetsGet('Users!A2:D');
+    const rows = data.values || [];
+    return rows.filter(r => r[0]).map(r => ({
+      username:    r[0] || '',
+      password:    r[1] || '',
+      role:        r[2] || 'team',
+      displayName: r[3] || r[0] || '',
+    }));
+  } catch(e) { return []; }
+}
+
+async function writeUsers(users) {
+  const token = await getAccessToken();
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent('Users!A2:D')}:clear`, {
+    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+  });
+  if (users.length > 0) {
+    const values = users.map(u => [
+      u.username || '',
+      u.password || '',
+      u.role || 'team',
+      u.displayName || u.username || '',
+    ]);
+    await sheetsAppend('Users!A:D', values);
+  }
+}
+
+module.exports = { readOrders, appendOrder, updateOrder, readProducts, writeProducts, readPresentations, writePresentations, readTasks, writeTasks, readRecurring, writeRecurring, readUsers, writeUsers };
