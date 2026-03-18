@@ -1,6 +1,8 @@
 // api/auth.js — POST /api/auth
-// Validates username/password and returns a token + user info
-// Users are stored in USERS env var: "username:password:role:displayName"
+// Validates username/password — users stored in Sheet tab "Users"
+// Falls back to USERS env var if Sheet is unavailable
+
+const { readUsers } = require('./_sheets');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -14,30 +16,59 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Missing username or password' });
   }
 
-  const users = parseUsers(process.env.USERS || '');
-  const match = users.find(
-    u => u.username === username.toLowerCase().trim() && u.password === password
-  );
+  try {
+    // Try Sheet first
+    let users = await readUsers();
 
-  if (!match) {
-    return res.status(401).json({ error: 'Incorrect username or password' });
+    // Fallback to env var if Sheet is empty
+    if (!users || users.length === 0) {
+      console.log('No users in Sheet, falling back to USERS env var');
+      users = parseUsersEnv(process.env.USERS || '');
+    }
+
+    const match = users.find(
+      u => u.username === username.toLowerCase().trim() && u.password === password
+    );
+
+    if (!match) {
+      return res.status(401).json({ error: 'Incorrect username or password' });
+    }
+
+    const token = Buffer.from(`${match.username}:${match.password}`).toString('base64');
+
+    return res.status(200).json({
+      token,
+      user: {
+        username: match.username,
+        role: match.role,
+        displayName: match.displayName,
+      },
+      // Send all users back (without passwords) so dashboard can build TEAM
+      team: users.map(u => ({
+        username: u.username,
+        role: u.role,
+        displayName: u.displayName,
+      })),
+    });
+
+  } catch(err) {
+    console.error('Auth error:', err);
+    // Final fallback to env var
+    const users = parseUsersEnv(process.env.USERS || '');
+    const match = users.find(
+      u => u.username === username.toLowerCase().trim() && u.password === password
+    );
+    if (!match) return res.status(401).json({ error: 'Incorrect username or password' });
+    const token = Buffer.from(`${match.username}:${match.password}`).toString('base64');
+    return res.status(200).json({
+      token,
+      user: { username: match.username, role: match.role, displayName: match.displayName },
+      team: users.map(u => ({ username: u.username, role: u.role, displayName: u.displayName })),
+    });
   }
-
-  // Token = base64(username:password) — simple, stateless
-  const token = Buffer.from(`${match.username}:${match.password}`).toString('base64');
-
-  return res.status(200).json({
-    token,
-    user: {
-      username: match.username,
-      role: match.role,
-      displayName: match.displayName,
-    },
-  });
 };
 
-function parseUsers(envStr) {
-  // Format: "username:password:role:Display Name,user2:pass2:team:Name Two"
+function parseUsersEnv(envStr) {
   return envStr.split(',').map(u => {
     const parts = u.trim().split(':');
     return {
