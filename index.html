@@ -668,6 +668,7 @@ async function doLogin(){
   document.getElementById('login-screen').style.display='none';
   // load config (products/presentations) then orders, tasks, recurring
   await apiLoadConfig();
+  rebuildTeam();
   await apiLoadOrders();
   await apiLoadTasks();
   await apiLoadRecurring();
@@ -721,17 +722,26 @@ var taskIdCounter=1;
 var RECURRING=[];
 var recIdCounter=1;
 
-var TEAM=[
-  {id:1,name:'Admin',email:'admin@diblubakery.com',role:'admin',avatar:'A'},
-  {id:2,name:'Flavi',email:'flavi@diblubakery.com',role:'team',avatar:'F'}
-];
+// TEAM is derived from USERS (loaded from /api/auth on login)
+var TEAM=[];
+function rebuildTeam(){
+  TEAM=USERS.map(function(u,i){
+    return {
+      id:i+1,
+      name:u.displayName||u.username,
+      username:u.username,
+      role:u.role,
+      avatar:(u.displayName||u.username).split(' ').map(function(s){return s[0];}).join('').toUpperCase().slice(0,2)
+    };
+  });
+}
 
 var FEEDBACK_SENT={};
 var fbSel={};
 
-var WEEK0=new Date('2026-03-16T12:00:00');
+var WEEK0=(function(){var d=new Date();d.setDate(d.getDate()-d.getDay()+1);d.setHours(12,0,0,0);return d;})();
 var oW=0,pW=0,tW=0,rW=0,fbW=0,filt='all',remSel={},remMsgs={};
-var TODAY='2026-03-20';
+var TODAY=new Date().toISOString().slice(0,10);
 var DN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 var dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
@@ -1435,9 +1445,8 @@ function renderAdminTeam(){
   html+='<div class="admin-title">Team members <span class="admin-subtitle">Manage roles and access — passwords managed via Vercel</span></div>';
   html+='<table class="team-table"><thead><tr><th>Name</th><th>Username</th><th>Role</th><th></th></tr></thead><tbody>';
   TEAM.forEach(function(m){
-    var u=USERS.find(function(x){return x.displayName===m.name;})||{};
     html+='<tr><td style="font-weight:600">'+esc(m.name)+'</td>';
-    html+='<td style="color:var(--text-2);font-family:monospace;font-size:12px">'+esc(u.username||'—')+'</td>';
+    html+='<td style="color:var(--text-2);font-family:monospace;font-size:12px">'+esc(m.username||'—')+'</td>';
     html+='<td><select onchange="changeRole('+m.id+',this.value)" style="padding:4px 8px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;font-family:inherit"><option value="admin"'+(m.role==='admin'?' selected':'')+'>Admin</option><option value="team"'+(m.role==='team'?' selected':'')+'>Team</option></select></td>';
     html+='<td>'+(m.id!==1?'<button class="btn" style="font-size:11px;padding:3px 9px;color:var(--red)" onclick="removeTeamMember('+m.id+')">Remove</button>':'')+'</td>';
     html+='</tr>';
@@ -1450,8 +1459,23 @@ function renderAdminTeam(){
 function toggleCombo(id){var b=document.getElementById('body-'+id);var a=document.getElementById('arr-'+id);var open=b.classList.contains('open');b.className='combo-body'+(open?'':' open');a.className='combo-arrow'+(open?'':' open');}
 function updateCombo(name,unit,val){var n=parseInt(val)||0;if(!PRODS[name])return;if(n===0)delete PRODS[name].u[unit];else PRODS[name].u[unit]=n;}
 function flashSaved(id){var el=document.getElementById('flash-'+id);if(el){el.classList.add('show');setTimeout(function(){el.classList.remove('show');},2500);}apiSaveConfig();}
-function changeRole(id,role){var m=TEAM.find(function(x){return String(x.id)===String(id);});if(m){m.role=role;renderAdminTeam();}}
-function removeTeamMember(id){if(confirm('Remove this team member?')){TEAM.splice(TEAM.findIndex(function(x){return String(x.id)===String(id);}),1);renderAdminTeam();}}
+function changeRole(id,role){
+  var m=TEAM.find(function(x){return String(x.id)===String(id);});
+  if(!m)return;
+  m.role=role;
+  var u=USERS.find(function(x){return x.username===m.username;});
+  if(u)u.role=role;
+  renderAdminTeam();
+}
+function removeTeamMember(id){
+  var m=TEAM.find(function(x){return String(x.id)===String(id);});
+  if(!m)return;
+  if(m.username===currentUser)return alert('You cannot remove yourself.');
+  if(!confirm('Remove '+m.name+'?'))return;
+  TEAM.splice(TEAM.findIndex(function(x){return String(x.id)===String(id);}),1);
+  USERS.splice(USERS.findIndex(function(x){return x.username===m.username;}),1);
+  renderAdminTeam();
+}
 function openInviteModal(){
   var h='<div class="mtitle">Invite team member<button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
   h+='<div style="margin-bottom:10px"><div class="flabel">Full name</div><input class="finput" type="text" id="inv-name" placeholder="Maria Lopez"></div>';
@@ -1469,8 +1493,9 @@ function saveInvite(){
   if(!name||!username||!pw)return alert('Please fill in all fields');
   if(USERS.find(function(x){return x.username===username;}))return alert('Username already exists');
   USERS.push({username:username,password:pw,role:role,displayName:name});
-  TEAM.push({id:TEAM.reduce(function(m,t){return Math.max(m,t.id);},0)+1,name:name,email:username+'@diblubakery.com',role:role,avatar:name.split(' ').map(function(s){return s[0];}).join('').toUpperCase().slice(0,2)});
+  rebuildTeam();
   closeModal();renderAdminTeam();
+  alert('Member added! Note: to make credentials permanent, update the USERS env var in Vercel.');
 }
 
 function addRow(){
