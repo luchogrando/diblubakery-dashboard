@@ -213,4 +213,91 @@ async function writePresentations(prods) {
   }
 }
 
-module.exports = { readOrders, appendOrder, updateOrder, readProducts, writeProducts, readPresentations, writePresentations };
+
+// ── TASKS ────────────────────────────────────────────────────
+// Tasks tab: A=id, B=date, C=title, D=createdBy, E=done, F=doneBy, G=comment
+
+async function readTasks() {
+  try {
+    const data = await sheetsGet('Tasks!A2:G');
+    const rows = data.values || [];
+    return rows.filter(r => r[0]).map(r => ({
+      id: parseInt(r[0]) || 0,
+      date: r[1] || '',
+      title: r[2] || '',
+      createdBy: r[3] || '',
+      done: r[4] === 'TRUE' || r[4] === true || r[4] === 'true',
+      doneBy: r[5] || '',
+      comment: r[6] || '',
+    }));
+  } catch(e) { return []; }
+}
+
+async function writeTasks(tasks) {
+  const token = await getAccessToken();
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent('Tasks!A2:G')}:clear`, {
+    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+  });
+  if (tasks.length > 0) {
+    const values = tasks.map(t => [
+      String(t.id),
+      t.date || '',
+      t.title || '',
+      t.createdBy || '',
+      t.done ? 'TRUE' : 'FALSE',
+      t.doneBy || '',
+      t.comment || '',
+    ]);
+    await sheetsAppend('Tasks!A:G', values);
+  }
+}
+
+// ── RECURRING ORDERS ─────────────────────────────────────────
+// Recurring tab: A=id, B=name, C=phone, D=shift, E=type, F=items_json, G=day, H=notes
+
+async function readRecurring() {
+  try {
+    const data = await sheetsGet('Recurring!A2:J');
+    const rows = data.values || [];
+    return rows.filter(r => r[0]).map(r => {
+      let items = [];
+      try { items = JSON.parse(r[5] || '[]'); } catch(e) {}
+      return {
+        id: parseInt(r[0]) || 0,
+        name: r[1] || '',
+        phone: r[2] || '',
+        shift: r[3] || 'morning',
+        type: r[4] || 'pickup',
+        items,
+        dayOfWeek: parseInt(r[6]) || 0,
+        notes: r[7] || '',
+        active: r[8] === 'TRUE' || r[8] === true || r[8] === 'true',
+        activatedThisWeek: r[9] === 'TRUE' || r[9] === true || r[9] === 'true',
+      };
+    });
+  } catch(e) { return []; }
+}
+
+async function writeRecurring(recurring) {
+  const token = await getAccessToken();
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent('Recurring!A2:J')}:clear`, {
+    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+  });
+  if (recurring.length > 0) {
+    const values = recurring.map(r => [
+      String(r.id),
+      r.name || '',
+      r.phone || '',
+      r.shift || 'morning',
+      r.type || 'pickup',
+      JSON.stringify(r.items || []),
+      r.dayOfWeek !== undefined ? String(r.dayOfWeek) : '0',
+      r.notes || '',
+      r.active !== false ? 'TRUE' : 'FALSE',
+      r.activatedThisWeek ? 'TRUE' : 'FALSE',
+    ]);
+    await sheetsAppend('Recurring!A:J', values);
+  }
+}
+
+module.exports = { readOrders, appendOrder, updateOrder, readProducts, writeProducts, readPresentations, writePresentations, readTasks, writeTasks, readRecurring, writeRecurring };
