@@ -559,6 +559,39 @@ async function apiSaveConfig(){
   }
 }
 
+async function apiLoadTasks(){
+  try {
+    var data = await apiFetch('/api/tasks');
+    if(data.tasks && data.tasks.length){
+      TASKS = data.tasks;
+      // update counter to avoid ID collisions
+      taskIdCounter = Math.max.apply(null, TASKS.map(function(t){return t.id||0;})) + 1;
+    }
+  } catch(e){ console.warn('Could not load tasks:', e.message); }
+}
+
+async function apiSaveTasks(){
+  try {
+    await apiFetch('/api/tasks', { method:'POST', body: JSON.stringify({ tasks: TASKS }) });
+  } catch(e){ console.warn('Could not save tasks:', e.message); }
+}
+
+async function apiLoadRecurring(){
+  try {
+    var data = await apiFetch('/api/recurring');
+    if(data.recurring && data.recurring.length){
+      RECURRING = data.recurring;
+      recIdCounter = Math.max.apply(null, RECURRING.map(function(r){return r.id||0;})) + 1;
+    }
+  } catch(e){ console.warn('Could not load recurring:', e.message); }
+}
+
+async function apiSaveRecurring(){
+  try {
+    await apiFetch('/api/recurring', { method:'POST', body: JSON.stringify({ recurring: RECURRING }) });
+  } catch(e){ console.warn('Could not save recurring:', e.message); }
+}
+
 async function apiLoadOrders(){
   var prevUnconf = getUnconfigured().length;
   try {
@@ -633,9 +666,11 @@ async function doLogin(){
   document.getElementById('nav-recurring').style.display='';
   // hide login, show app
   document.getElementById('login-screen').style.display='none';
-  // load config (products/presentations) then orders
+  // load config (products/presentations) then orders, tasks, recurring
   await apiLoadConfig();
   await apiLoadOrders();
+  await apiLoadTasks();
+  await apiLoadRecurring();
   addRow();
   renderOrders();
   updateTasksBadge();
@@ -1001,8 +1036,8 @@ function renderTasks(){
 }
 function toggleTaskDay(id){var el=document.getElementById(id);if(el)el.style.display=el.style.display==='none'?'':'none';}
 function toggleAddTask(iso){var f=document.getElementById('atf-'+iso);if(f){f.classList.toggle('open');if(f.classList.contains('open'))document.getElementById('ti-'+iso).focus();}}
-function toggleTask(id){var t=TASKS.find(function(x){return String(x.id)===String(id);});if(!t)return;t.done=!t.done;t.doneBy=t.done?currentUser:'';renderTasks();}
-function addTask(iso){var inp=document.getElementById('ti-'+iso);if(!inp||!inp.value.trim())return;TASKS.push({id:taskIdCounter++,date:iso,title:inp.value.trim(),createdBy:currentUser,done:false,doneBy:'',comment:''});inp.value='';renderTasks();}
+function toggleTask(id){var t=TASKS.find(function(x){return String(x.id)===String(id);});if(!t)return;t.done=!t.done;t.doneBy=t.done?currentUser:'';renderTasks();apiSaveTasks();}
+function addTask(iso){var inp=document.getElementById('ti-'+iso);if(!inp||!inp.value.trim())return;TASKS.push({id:taskIdCounter++,date:iso,title:inp.value.trim(),createdBy:currentUser,done:false,doneBy:'',comment:''});inp.value='';renderTasks();apiSaveTasks();}
 function openCommentModal(taskId){
   var t=TASKS.find(function(x){return x.id===taskId;});if(!t)return;
   var h='<div class="mtitle">'+esc(t.title)+'<button class="xbtn" onclick="closeCommentModal()">&#x00D7;</button></div>';
@@ -1011,7 +1046,7 @@ function openCommentModal(taskId){
   document.getElementById('comment-mbox').innerHTML=h;
   document.getElementById('comment-overlay').className='overlay on';
 }
-function saveComment(id){var t=TASKS.find(function(x){return String(x.id)===String(id);});var inp=document.getElementById('comment-inp');if(t&&inp)t.comment=inp.value.trim();closeCommentModal();renderTasks();}
+function saveComment(id){var t=TASKS.find(function(x){return String(x.id)===String(id);});var inp=document.getElementById('comment-inp');if(t&&inp)t.comment=inp.value.trim();closeCommentModal();renderTasks();apiSaveTasks();}
 function closeCommentModal(){document.getElementById('comment-overlay').className='overlay';}
 function maybeCloseComment(e){if(e.target===document.getElementById('comment-overlay'))closeCommentModal();}
 
@@ -1104,8 +1139,8 @@ function activateRecurring(id){
   renderRecurring();renderOrders();
 }
 function dismissRecurring(id){var r=RECURRING.find(function(x){return String(x.id)===String(id);});if(r)r.activatedThisWeek=true;renderRecurring();renderOrders();}
-function toggleRecurring(id){var r=RECURRING.find(function(x){return String(x.id)===String(id);});if(r)r.active=!r.active;renderRecurring();}
-function deleteRecurring(id){if(confirm('Delete this recurring order?')){RECURRING.splice(RECURRING.findIndex(function(x){return String(x.id)===String(id);}),1);renderRecurring();}}
+function toggleRecurring(id){var r=RECURRING.find(function(x){return String(x.id)===String(id);});if(r)r.active=!r.active;renderRecurring();apiSaveRecurring();}
+function deleteRecurring(id){if(confirm('Delete this recurring order?')){RECURRING.splice(RECURRING.findIndex(function(x){return String(x.id)===String(id);}),1);renderRecurring();apiSaveRecurring();}}
 
 function openNewRecurring(){openRecurringForm(null);}
 function openEditRecurring(id){openRecurringForm(id);}
@@ -1147,7 +1182,7 @@ function saveRecurringForm(id){
   var items=[];rows.forEach(function(row){var s=row.querySelector('select');var inp=row.querySelector('input[type="number"]');if(s&&inp)items.push({p:s.value,q:parseInt(inp.value)||1});});
   if(id){var r=RECURRING.find(function(x){return String(x.id)===String(id);});if(r){r.name=name;r.phone=phone;r.dayOfWeek=dow;r.shift=shift;r.type=type;r.items=items;}}
   else{RECURRING.push({id:recIdCounter++,name:name,phone:phone,dayOfWeek:dow,shift:shift,type:type,items:items,active:true,activatedThisWeek:false});}
-  closeModal();renderRecurring();
+  closeModal();renderRecurring();apiSaveRecurring();
 }
 
 // ─── ADMIN TAB SWITCHER ─────────────────────────────────────────
