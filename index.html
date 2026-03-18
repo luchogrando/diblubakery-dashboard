@@ -594,7 +594,16 @@ async function apiSaveRecurring(){
 
 async function apiSaveUsers(users){
   try {
-    await apiFetch('/api/users', { method:'POST', body: JSON.stringify({ users: users }) });
+    // Server merges passwords — just send what we have (passwords may be empty for existing users)
+    var toSave = users.map(function(u){
+      return {
+        username: u.username,
+        password: u.password || '',
+        role: u.role,
+        displayName: u.displayName || u.name || u.username,
+      };
+    });
+    await apiFetch('/api/users', { method:'POST', body: JSON.stringify({ users: toSave }) });
   } catch(e){ console.warn('Could not save users:', e.message); }
 }
 
@@ -649,7 +658,7 @@ async function doLogin(){
     currentRole = data.user.role;
     currentUser = data.user.displayName;
     if(data.team && data.team.length){
-      USERS = data.team.map(function(u){ return {username:u.username,role:u.role,displayName:u.displayName,password:''}; });
+      USERS = data.team.map(function(u){ return {username:u.username,role:u.role,displayName:u.displayName||u.username,password:''}; });
     }
   } catch(e){
     document.getElementById('login-error').textContent='Incorrect username or password.';
@@ -1451,10 +1460,10 @@ function deletePres(name){
 // ── SECTION 3: TEAM ──────────────────────────────────────────
 function renderAdminTeam(){
   var html='<div class="admin-section">';
-  html+='<div class="admin-title">Team members <span class="admin-subtitle">Manage roles and access — passwords managed via Vercel</span></div>';
+  html+='<div class="admin-title">Team members <span class="admin-subtitle">Manage roles, passwords and access</span></div>';
   html+='<table class="team-table"><thead><tr><th>Name</th><th>Username</th><th>Role</th><th></th></tr></thead><tbody>';
   TEAM.forEach(function(m){
-    html+='<tr><td style="font-weight:600">'+esc(m.name)+'</td>';
+    html+='<tr><td style="font-weight:600">'+esc(m.name||m.displayName||m.username)+'</td>';
     html+='<td style="color:var(--text-2);font-family:monospace;font-size:12px">'+esc(m.username||'—')+'</td>';
     html+='<td><select onchange="changeRole('+m.id+',this.value)" style="padding:4px 8px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;font-family:inherit"><option value="admin"'+(m.role==='admin'?' selected':'')+'>Admin</option><option value="team"'+(m.role==='team'?' selected':'')+'>Team</option></select></td>';
     html+='<td style="display:flex;gap:6px">';
