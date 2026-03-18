@@ -977,13 +977,22 @@ function undoDelivered(id){
   var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(o){o.delivery='pending';o.edited=true;o.editedBy=currentUser;apiUpdateOrder(id,{delivery:'pending',edited:true,editedBy:currentUser});}openModal(id);renderOrders();
 }
 
+function waEncode(text){
+  // encodeURIComponent but preserving emojis for WhatsApp compatibility
+  return text.split('').map(function(c){
+    var code=c.codePointAt(0);
+    // Keep emojis and normal chars as-is, encode special URL chars
+    if(code>127||'!'()*-._~'.indexOf(c)>=0)return encodeURIComponent(c);
+    return c;
+  }).join('');
+}
 function buildMsg(o,template){
   var t=template||document.getElementById('def-msg').value;
   var custom=remMsgs[o.id];var tpl=custom!==undefined?custom:t;
   var d=o.date?fmtS(new Date(o.date+'T12:00')):'TBD';
   return tpl.replace(/{name}/g,o.name.split(' ')[0]).replace(/{order}/g,o.wix).replace(/{date}/g,d).replace(/{shift}/g,o.shift||'TBD').replace(/{type}/g,o.type==='delivery'?'delivered':'ready for pick up').replace(/{items}/g,o.items.map(function(x){return x.p+' x'+x.q;}).join(', '));
 }
-function sendWA(id){var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;closeModal();window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+encodeURIComponent(buildMsg(o)),'_blank');}
+function sendWA(id){var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;closeModal();window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+waEncode(buildMsg(o)),'_blank');}
 
 function renderProd(){
   document.getElementById('p-wlabel').textContent=fmtWeek(pW);
@@ -1110,8 +1119,8 @@ function toggleRem(id){remSel[id]=!remSel[id];renderRem();}
 function openEdit(id){remMsgs['edit_'+id]=true;renderRem();}
 function cancelEdit(id){delete remMsgs['edit_'+id];renderRem();}
 function saveEdit(id){var ta=document.getElementById('re'+id);if(ta)remMsgs[id]=ta.value;delete remMsgs['edit_'+id];renderRem();}
-function sendWArem(id){var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+encodeURIComponent(buildMsg(o)),'_blank');}
-function sendBatch(){var sel=ORDERS.filter(function(o){return !!remSel[o.id];});var i=0;function next(){if(i>=sel.length)return;var o=sel[i++];window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+encodeURIComponent(buildMsg(o)),'_blank');setTimeout(next,900);}next();}
+function sendWArem(id){var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+waEncode(buildMsg(o)),'_blank');}
+function sendBatch(){var sel=ORDERS.filter(function(o){return !!remSel[o.id];});var i=0;function next(){if(i>=sel.length)return;var o=sel[i++];window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+waEncode(buildMsg(o)),'_blank');setTimeout(next,900);}next();}
 
 function renderFeedback(){
   document.getElementById('fb-wlabel').textContent=fmtWeek(fbW);
@@ -1140,8 +1149,8 @@ function buildFbMsg(o){
   var t=document.getElementById('fb-msg').value;
   return t.replace(/{name}/g,o.name.split(' ')[0]).replace(/{order}/g,o.wix).replace(/{items}/g,o.items.map(function(x){return x.p+' x'+x.q;}).join(', '));
 }
-function sendFbSingle(id){var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;FEEDBACK_SENT[id]=true;window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+encodeURIComponent(buildFbMsg(o)),'_blank');renderFeedback();}
-function sendFbBatch(){var sel=ORDERS.filter(function(o){return !!fbSel[o.id];});var i=0;function next(){if(i>=sel.length)return;var o=sel[i++];FEEDBACK_SENT[o.id]=true;window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+encodeURIComponent(buildFbMsg(o)),'_blank');setTimeout(next,900);}next();renderFeedback();}
+function sendFbSingle(id){var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;FEEDBACK_SENT[id]=true;window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+waEncode(buildFbMsg(o)),'_blank');renderFeedback();}
+function sendFbBatch(){var sel=ORDERS.filter(function(o){return !!fbSel[o.id];});var i=0;function next(){if(i>=sel.length)return;var o=sel[i++];FEEDBACK_SENT[o.id]=true;window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+waEncode(buildFbMsg(o)),'_blank');setTimeout(next,900);}next();renderFeedback();}
 
 function renderRecurring(){
   var sugHtml='';
