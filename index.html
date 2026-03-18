@@ -978,13 +978,8 @@ function undoDelivered(id){
 }
 
 function waEncode(text){
-  // encodeURIComponent but preserving emojis for WhatsApp compatibility
-  return text.split('').map(function(c){
-    var code=c.codePointAt(0);
-    // Keep emojis and normal chars as-is, encode special URL chars
-    if(code>127||"!'()*-._~".indexOf(c)>=0)return encodeURIComponent(c);
-    return c;
-  }).join('');
+  // Standard encodeURIComponent works fine for WhatsApp — emojis included
+  return encodeURIComponent(text);
 }
 function buildMsg(o,template){
   var t=template||document.getElementById('def-msg').value;
