@@ -120,11 +120,11 @@ function rowToOrder(r) {
     type:        r[6]  || 'pickup',
     fulfillment: r[7]  || 'unfulfilled',
     delivery:    r[8]  || 'pending',
-    customDate:  r[9]  === 'true' || r[9]  === true,
-    recurring:   r[10] === 'true' || r[10] === true,
+    customDate:  r[9]  === '1' || r[9]  === 1,
+    recurring:   r[10] === '1' || r[10] === 1,
     notes:       r[11] || '',
     items:       safeJSON(r[12], []),
-    edited:      r[13] === 'true' || r[13] === true,
+    edited:      r[13] === '1' || r[13] === 1,
     editedBy:    r[14] || '',
     createdAt:   r[15] || '',
     total:       r[16] ? parseFloat(r[16]) : null,
@@ -142,11 +142,11 @@ function orderToRow(o) {
     String(o.type || 'pickup'),
     String(o.fulfillment || 'unfulfilled'),
     String(o.delivery || 'pending'),
-    o.customDate ? 'TRUE' : 'FALSE',
-    o.recurring ? 'TRUE' : 'FALSE',
+    o.customDate ? '1' : '0',
+    o.recurring ? '1' : '0',
     String(o.notes || ''),
     JSON.stringify(o.items || []),
-    o.edited ? 'TRUE' : 'FALSE',
+    o.edited ? '1' : '0',
     String(o.editedBy || ''),
     String(o.createdAt || new Date().toISOString()),
     o.total != null ? String(o.total) : '',
@@ -226,7 +226,7 @@ async function readTasks() {
       date: r[1] || '',
       title: r[2] || '',
       createdBy: r[3] || '',
-      done: r[4] === 'TRUE' || r[4] === true || r[4] === 'true',
+      done: r[4] === '1' || r[4] === 1,
       doneBy: r[5] || '',
       comment: r[6] || '',
     }));
@@ -244,7 +244,7 @@ async function writeTasks(tasks) {
       t.date || '',
       t.title || '',
       t.createdBy || '',
-      t.done ? 'TRUE' : 'FALSE',
+      t.done ? '1' : '0',
       t.doneBy || '',
       t.comment || '',
     ]);
@@ -271,8 +271,8 @@ async function readRecurring() {
         items,
         dayOfWeek: parseInt(r[6]) || 0,
         notes: r[7] || '',
-        active: r[8] === 'TRUE' || r[8] === true || r[8] === 'true',
-        activatedThisWeek: r[9] === 'TRUE' || r[9] === true || r[9] === 'true',
+        active: r[8] === '1' || r[8] === 1,
+        activatedThisWeek: r[9] === '1' || r[9] === 1,
       };
     });
   } catch(e) { return []; }
@@ -293,8 +293,8 @@ async function writeRecurring(recurring) {
       JSON.stringify(r.items || []),
       r.dayOfWeek !== undefined ? String(r.dayOfWeek) : '0',
       r.notes || '',
-      r.active !== false ? 'TRUE' : 'FALSE',
-      r.activatedThisWeek ? 'TRUE' : 'FALSE',
+      r.active !== false ? '1' : '0',
+      r.activatedThisWeek ? '1' : '0',
     ]);
     await sheetsAppend('Recurring!A:J', values);
   }
