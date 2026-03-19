@@ -340,7 +340,7 @@ async function writeUsers(users) {
 
 async function readSettings() {
   try {
-    const data = await sheetsGet('Settings!A2:B');
+    const data = await sheetsGet('Messages!A2:B');
     const rows = data.values || [];
     const result = {};
     rows.forEach(r => { if (r[0]) result[r[0]] = r[1] || ''; });
@@ -350,11 +350,15 @@ async function readSettings() {
 
 async function writeSettings(settings) {
   const token = await getAccessToken();
-  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent('Settings!A2:B')}:clear`, {
+  // Clear existing data first
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent('Messages!A2:B')}:clear`, {
     method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
   });
+  // Write all settings as rows
   const values = Object.entries(settings).map(([k, v]) => [k, v]);
-  if (values.length > 0) await sheetsAppend('Settings!A:B', values);
+  if (values.length > 0) {
+    await sheetsUpdate('Messages!A2:B', values);
+  }
 }
 
 module.exports = { readOrders, appendOrder, updateOrder, readProducts, writeProducts, readPresentations, writePresentations, readTasks, writeTasks, readRecurring, writeRecurring, readUsers, writeUsers, readSettings, writeSettings };
