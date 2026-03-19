@@ -1483,7 +1483,8 @@ function renderSheet(){
     var canSort=sortable.indexOf(c.key)>=0;
     var isActive=sheetSortCol===c.key;
     var arrow=isActive?(sheetSortDir===1?' ↑':' ↓'):(canSort?' ↕':'');
-    var thClick=canSort?(' onclick="sheetSort(\'' + c.key + '\')"'):''; html+='<th style="padding:8px 10px;text-align:left;font-weight:600;color:var(--text-2);white-space:nowrap'+(canSort?';cursor:pointer':'')+'"+thClick+">'+c.label+'<span class="sort-arrow">'+arrow+'</span></th>';
+        var thOnclick=canSort?(' onclick="sheetSort(\''+c.key+'\')"'):'';
+    html+='<th style="padding:8px 10px;text-align:left;font-weight:600;color:var(--text-2);white-space:nowrap'+(canSort?';cursor:pointer':'')+'"'+thOnclick+'>'+c.label+'<span class="sort-arrow">'+arrow+'</span></th>';
   });
   html+='</tr></thead><tbody>';
   filtered.forEach(function(o,i){
@@ -1811,17 +1812,19 @@ function openNewPresModal(){
   h+='<div><div class="flabel">Name</div><input class="finput" type="text" id="np-name" placeholder="e.g. Medialunas - Box of 6" autocomplete="off"></div>';
   h+='</div>';
   h+='<div class="msec">What goes into this (base products)</div>';
-  h+='<div id="np-units">';
-  h+='<div class="unit-row"><select style="flex:1;padding:5px 9px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;font-family:inherit">'+bpOptions+'</select><input type="number" min="1" value="1" style="width:56px;padding:5px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;text-align:center"><button onclick="this.parentNode.remove()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-3)">&#x00D7;</button></div>';
-  h+='</div>';
+  h+='<div id="np-units"></div>';
   h+='<button class="add-btn" onclick="addNewPresUnit()" style="margin:8px 0 16px">+ add ingredient</button>';
+  // auto-add first row after modal renders
+  h+='<script>setTimeout(addNewPresUnit,50)<'+'/script>';
   h+='<div class="mactions"><button class="btn accent" onclick="saveNewPres()" style="padding:10px;font-size:13px">Save</button></div>';
   document.getElementById('mbox').innerHTML=h;
   document.getElementById('overlay').className='overlay on';
 }
 function addNewPresUnit(){
   var bpOptions=Object.keys(BASE_PRODUCTS).map(function(k){return '<option value="'+k+'">'+esc(BASE_PRODUCTS[k].name)+'</option>';}).join('');
-  var c=document.getElementById('np-units');var r=document.createElement('div');r.className='unit-row';
+  var c=document.getElementById('np-units');var r=document.createElement('div');
+  r.className='unit-row';
+  r.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:6px';
   r.innerHTML='<select style="flex:1;padding:5px 9px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;font-family:inherit">'+bpOptions+'</select><input type="number" min="1" value="1" style="width:56px;padding:5px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;text-align:center"><button onclick="this.parentNode.remove()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-3)">&#x00D7;</button>';
   c.appendChild(r);
 }
@@ -1829,14 +1832,16 @@ function saveNewPres(){
   var name=document.getElementById('np-name').value.trim();
   if(!name)return alert('Enter a product name');
   if(PRODS[name])return alert('A presentation with this name already exists');
-  var container=document.getElementById('np-units');
-  var selects=container.querySelectorAll('select');
-  var inputs=container.querySelectorAll('input[type="number"]');
   var u={};
-  for(var i=0;i<selects.length;i++){
-    var k=selects[i].value;var v=parseInt(inputs[i]?inputs[i].value:1)||1;
-    if(k)u[k]=(u[k]||0)+v;
-  }
+  var rows=document.getElementById('np-units').querySelectorAll('.unit-row');
+  rows.forEach(function(row){
+    var sel=row.querySelector('select');
+    var inp=row.querySelector('input[type="number"]');
+    if(sel&&sel.value&&inp){
+      var v=parseInt(inp.value)||1;
+      u[sel.value]=(u[sel.value]||0)+v;
+    }
+  });
   PRODS[name]={u:u};
   closeModal();renderAdminPres();apiSaveConfig();
 }
