@@ -454,27 +454,27 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
     <div class="form-card">
       <div class="form-title">New order</div>
       <div class="form-g2">
-        <div><div class="flabel">First name</div><input class="finput" type="text" placeholder="Jane"></div>
-        <div><div class="flabel">Last name</div><input class="finput" type="text" placeholder="Smith"></div>
+        <div><div class="flabel">First name</div><input class="finput" type="text" id="no-first" placeholder="Jane"></div>
+        <div><div class="flabel">Last name</div><input class="finput" type="text" id="no-last" placeholder="Smith"></div>
       </div>
       <div class="form-g2">
-        <div><div class="flabel">WhatsApp</div><input class="finput" type="text" placeholder="+1 201..."></div>
-        <div><div class="flabel">Wix order #</div><input class="finput" type="text" placeholder="#1099"></div>
+        <div><div class="flabel">WhatsApp</div><input class="finput" type="text" id="no-phone" placeholder="+1 201..."></div>
+        <div><div class="flabel">Wix order #</div><input class="finput" type="text" id="no-wix" placeholder="#1099"></div>
       </div>
       <div class="form-g3">
-        <div><div class="flabel">Date</div><input class="finput" type="date"></div>
-        <div><div class="flabel">Shift</div><select class="finput"><option>Morning</option><option>Afternoon</option></select></div>
-        <div><div class="flabel">Type</div><select class="finput"><option>Pick up</option><option>Delivery</option></select></div>
+        <div><div class="flabel">Date</div><input class="finput" type="date" id="no-date"></div>
+        <div><div class="flabel">Shift</div><select class="finput" id="no-shift"><option value="morning">Morning</option><option value="afternoon">Afternoon</option></select></div>
+        <div><div class="flabel">Type</div><select class="finput" id="no-type"><option value="pickup">Pick up</option><option value="delivery">Delivery</option></select></div>
       </div>
       <div style="margin-bottom:12px">
         <div class="flabel" style="margin-bottom:5px">Products</div>
         <div id="new-items"></div>
         <button class="add-btn" onclick="addRow()">+ add product</button>
       </div>
-      <div style="margin-bottom:16px"><div class="flabel">Notes</div><input class="finput" type="text" placeholder="e.g. no nuts, birthday note..."></div>
+      <div style="margin-bottom:16px"><div class="flabel">Notes</div><input class="finput" type="text" id="no-notes" placeholder="e.g. no nuts, birthday note..."></div>
       <div class="form-actions">
         <button class="btn" onclick="showPage('orders')">Cancel</button>
-        <button class="btn accent" onclick="showPage('orders')">Save order</button>
+        <button class="btn accent" onclick="saveNewOrder()">Save order</button>
       </div>
     </div>
   </div>
@@ -793,7 +793,7 @@ var FEEDBACK_SENT={};
 var fbSel={};
 
 var WEEK0=(function(){var d=new Date();d.setDate(d.getDate()-d.getDay()+1);d.setHours(12,0,0,0);return d;})();
-var oW=0,pW=0,tW=0,rW=0,fbW=0,filt='all',remSel={},remMsgs={};
+var oW=0,pW=0,tW=0,rW=0,fbW=-1,filt='all',remSel={},remMsgs={};
 var TODAY=new Date().toISOString().slice(0,10);
 var DN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 var dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -1174,7 +1174,7 @@ function sendBatch(){var sel=ORDERS.filter(function(o){return !!remSel[o.id];});
 function renderFeedback(){
   document.getElementById('fb-wlabel').textContent=fmtWeek(fbW);
   var days=weekDates(fbW);var isos=days.map(isoDate);
-  var delivered=ORDERS.filter(function(o){return o.delivery==='delivered'&&o.date&&isos.indexOf(o.date)>=0;}).sort(function(a,b){return a.date<b.date?-1:1;});
+  var delivered=ORDERS.filter(function(o){return o.delivery==='delivered'&&!o.recurring&&o.date&&isos.indexOf(o.date)>=0;}).sort(function(a,b){return a.date<b.date?-1:1;});
   var n=Object.keys(fbSel).filter(function(k){return fbSel[k];}).length;
   document.getElementById('fb-n').textContent=n;
   document.getElementById('fb-bulk-btn').disabled=n===0;
@@ -1637,6 +1637,51 @@ function saveNewPassword(username){
   u.password=pw;
   apiSaveUsers(USERS);
   closeModal();
+}
+
+function saveNewOrder(){
+  var first=(document.getElementById('no-first').value||'').trim();
+  var last=(document.getElementById('no-last').value||'').trim();
+  var phone=(document.getElementById('no-phone').value||'').trim();
+  var wix=(document.getElementById('no-wix').value||'').trim();
+  var date=document.getElementById('no-date').value||null;
+  var shift=document.getElementById('no-shift').value;
+  var type=document.getElementById('no-type').value;
+  var notes=(document.getElementById('no-notes').value||'').trim();
+  var name=[first,last].filter(Boolean).join(' ')||'Unknown';
+  if(!name||name==='Unknown')return alert('Please enter a name');
+  // Collect items
+  var rows=document.getElementById('new-items').querySelectorAll('.product-row');
+  var items=[];
+  rows.forEach(function(r){
+    var sel=r.querySelector('select');var inp=r.querySelector('input');
+    if(sel&&inp&&sel.value)items.push({p:sel.value,q:parseInt(inp.value)||1});
+  });
+  if(!items.length)return alert('Please add at least one product');
+  var order={
+    id:Date.now(),
+    wix:wix||('#MAN'+Date.now()),
+    name:name,phone:phone,
+    date:date||null,shift:shift,type:type,
+    fulfillment:'unfulfilled',delivery:'pending',
+    customDate:!date,recurring:false,
+    edited:false,editedBy:'',
+    notes:notes,items:items,total:null,
+    createdAt:new Date().toISOString()
+  };
+  ORDERS.push(order);
+  apiFetch('/api/orders',{method:'POST',body:JSON.stringify(order)}).catch(console.warn);
+  // Clear form
+  document.getElementById('no-first').value='';
+  document.getElementById('no-last').value='';
+  document.getElementById('no-phone').value='';
+  document.getElementById('no-wix').value='';
+  document.getElementById('no-date').value='';
+  document.getElementById('no-notes').value='';
+  document.getElementById('new-items').innerHTML='';
+  addRow();
+  showPage('orders');
+  renderOrders();
 }
 
 function addRow(){
