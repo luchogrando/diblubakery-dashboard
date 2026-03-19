@@ -993,7 +993,19 @@ function undoFulfillment(id){
   if(currentRole!=='admin')return alert('Only admin can undo fulfillment status.');
   var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(o){o.fulfillment='unfulfilled';o.edited=true;o.editedBy=currentUser;apiUpdateOrder(id,{fulfillment:'unfulfilled',edited:true,editedBy:currentUser});if(o.wix)apiFetch('/api/unfulfill',{method:'POST',body:JSON.stringify({wixOrderNumber:o.wix})}).catch(function(e){console.warn('Could not sync unfulfillment to Wix:',e.message);});}openModal(id);renderOrders();
 }
-function setDelivered(id){var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(o){o.delivery='delivered';o.edited=true;o.editedBy=currentUser;apiUpdateOrder(id,{delivery:'delivered',edited:true,editedBy:currentUser});}openModal(id);renderOrders();}
+function setDelivered(id){
+  var o=ORDERS.find(function(x){return String(x.id)===String(id);});
+  if(!o)return;
+  if(o.fulfillment!=='fulfilled'){
+    if(confirm('This order is not marked as fulfilled yet. Mark it as fulfilled too?')){
+      o.fulfillment='fulfilled';
+      setFulfillment(id);
+    }
+  }
+  o.delivery='delivered';o.edited=true;o.editedBy=currentUser;
+  apiUpdateOrder(id,{delivery:'delivered',fulfillment:o.fulfillment,edited:true,editedBy:currentUser});
+  openModal(id);renderOrders();
+}
 function undoDelivered(id){
   if(currentRole!=='admin')return alert('Only admin can undo delivery status.');
   var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(o){o.delivery='pending';o.edited=true;o.editedBy=currentUser;apiUpdateOrder(id,{delivery:'pending',edited:true,editedBy:currentUser});}openModal(id);renderOrders();
