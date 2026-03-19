@@ -82,6 +82,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .no-orders{font-size:12px;color:var(--text-3);padding:5px 2px 7px;font-style:italic;}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 13px;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+.order-tabs{display:flex;gap:0;margin-bottom:14px;border-bottom:2px solid var(--border);}
+.order-tab{padding:8px 18px;font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;}
+.order-tab.on{color:var(--accent);border-bottom-color:var(--accent);}
+.sheet-table-wrap{overflow-x:auto;max-height:calc(100vh - 280px);overflow-y:auto;}
+.sheet-table-wrap table thead tr{position:sticky;top:0;z-index:2;background:var(--bg);}
+.sort-arrow{font-size:10px;margin-left:3px;color:var(--text-3);}
 .custom-card{border-left:3px solid var(--purple)!important;}
 .card:hover{border-color:var(--border-dark);box-shadow:0 2px 10px rgba(0,0,0,.07);}
 .card.faded{opacity:.45;}
@@ -324,6 +330,13 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
 
   <!-- ORDERS -->
   <div class="page on" id="page-orders">
+    <div class="order-tabs">
+      <button class="order-tab on" id="otab-calendar" onclick="switchOrderTab('calendar')">Calendar</button>
+      <button class="order-tab" id="otab-sheet" onclick="switchOrderTab('sheet')">All orders</button>
+    </div>
+
+    <!-- CALENDAR VIEW -->
+    <div id="oview-calendar">
     <div class="week-bar">
       <button class="wbtn" onclick="changeWeek('o',-1)">←</button>
       <span class="wlabel" id="o-wlabel"></span>
@@ -340,7 +353,6 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
       <button class="fbtn" data-f="delivered" onclick="setFilter(this)">Delivered</button>
       <button class="fbtn" data-f="custom" onclick="setFilter(this)">Custom date</button>
       <button class="fbtn" data-f="dismissed" onclick="setFilter(this)">Dismissed recurring</button>
-      <button class="btn" onclick="showSheet()" style="font-size:11px;padding:4px 11px;margin-left:4px">All orders &rarr;</button>
     </div>
     <div style="margin-bottom:10px">
       <input type="text" id="order-search" class="finput" placeholder="Search by name..." oninput="renderOrders()" style="max-width:280px;padding:6px 10px;font-size:12px">
@@ -350,18 +362,14 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
       <button class="btn" onclick="filterCustom()">View them →</button>
     </div>
     <div id="rec-inline-section" style="display:none;margin-bottom:16px">
-      <div style="font-size:13px;font-weight:600;color:var(--recurring);margin-bottom:10px">🔁 Recurring order suggestions for this week</div>
+      <div style="font-size:13px;font-weight:600;color:var(--recurring);margin-bottom:10px">Recurring order suggestions for this week</div>
       <div id="rec-inline-cards"></div>
     </div>
     <div id="orders-body"></div>
-  </div>
-
-  <!-- SHEET VIEW -->
-  <div class="page" id="page-sheet">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-      <div style="font-size:16px;font-weight:700">All orders</div>
-      <button class="btn" onclick="showPage('orders')">← Back</button>
     </div>
+
+    <!-- SHEET VIEW -->
+    <div id="oview-sheet" style="display:none">
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
       <input type="text" id="sheet-name-filter" class="finput" placeholder="Search by name..." oninput="sheetNameFilter=this.value;renderSheet()" style="max-width:220px;padding:6px 10px;font-size:12px">
       <select class="finput" style="max-width:160px;padding:6px 10px;font-size:12px" onchange="sheetTimeFilter=this.value;renderSheet()">
@@ -373,7 +381,9 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
       </select>
     </div>
     <div id="sheet-body"></div>
+    </div>
   </div>
+
 
   <!-- PRODUCTION -->
   <div class="page" id="page-prod">
@@ -962,7 +972,7 @@ function renderOrders(){
         html2+='<div class="card-wix">Recurring · every '+dayNames[r.dayOfWeek]+'</div>';
         html2+='<div class="card-tags"><span class="tag t-recurring">recurring</span></div>';
         html2+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
-        html2+='<button class="btn accent" style="font-size:11px;padding:5px 12px" onclick="undoDismiss('+r.id+',\''+dateKey+'\')">&Undo dismiss</button>';
+        html2+='<button class="btn accent" style="font-size:11px;padding:5px 12px" onclick="undoDismiss('+r.id+',\''+dateKey+'\')">Undo dismiss</button>';
         html2+='</div></div>';
       });
       html2+='</div>';
@@ -1267,7 +1277,12 @@ function sendNextInBatch(){
   if(_batchQueue.length>0){
     var next=_batchQueue[0];
     var h='<div class="mtitle">Sending batch <button class="xbtn" onclick="closeModal();_batchQueue=[];">&#x00D7;</button></div>';
-    h+='<div style="font-size:13px;color:var(--text-2);margin-bottom:16px">'+_batchQueue.length+' message'+(_batchQueue.length>1?'s':'')+' remaining. Next: <b>'+esc(next.name)+'</b></div>';
+    h+='<div style="font-size:12px;color:var(--text-2);margin-bottom:6px">Just sent to <b>'+esc(o.name)+'</b> ('+esc(o.wix)+')</div>';
+    h+='<div style="margin-bottom:14px;padding:10px 12px;background:var(--accent-light);border-radius:8px;">';
+    h+='<div style="font-size:11px;color:var(--text-3);margin-bottom:2px">Next up ('+_batchQueue.length+' remaining)</div>';
+    h+='<div style="font-size:14px;font-weight:700">'+esc(next.name)+'</div>';
+    h+='<div style="font-size:12px;color:var(--text-2)">'+esc(next.wix)+(next.date?' · '+fmtS(new Date(next.date+'T12:00')):'')+'</div>';
+    h+='</div>';
     h+='<button class="btn accent" onclick="closeModal();sendNextInBatch();" style="width:100%;padding:11px;font-size:13px">Send next &rarr;</button>';
     h+='<button class="btn" onclick="closeModal();_batchQueue=[];" style="width:100%;margin-top:8px;padding:9px">Stop sending</button>';
     document.getElementById('mbox').innerHTML=h;
@@ -1288,9 +1303,25 @@ function undoDismiss(id, dateKey){
 
 var sheetTimeFilter='current_month';
 var sheetNameFilter='';
+var sheetSortCol='date';
+var sheetSortDir=-1; // -1=desc, 1=asc
+
+function switchOrderTab(tab){
+  document.getElementById('oview-calendar').style.display=tab==='calendar'?'':'none';
+  document.getElementById('oview-sheet').style.display=tab==='sheet'?'':'none';
+  document.getElementById('otab-calendar').className='order-tab'+(tab==='calendar'?' on':'');
+  document.getElementById('otab-sheet').className='order-tab'+(tab==='sheet'?' on':'');
+  if(tab==='sheet')renderSheet();
+}
 
 function showSheet(){
-  showPage('sheet');
+  showPage('orders');
+  switchOrderTab('sheet');
+}
+
+function sheetSort(col){
+  if(sheetSortCol===col)sheetSortDir*=-1;
+  else{sheetSortCol=col;sheetSortDir=-1;}
   renderSheet();
 }
 
@@ -1314,21 +1345,47 @@ function renderSheet(){
   var label=document.getElementById('sheet-name-filter');
   if(label)label.value=sheetNameFilter;
 
-  var html='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">';
-  html+='<thead><tr style="background:var(--bg);border-bottom:2px solid var(--border)">';
-  ['Name','Wix #','Date','Shift','Type','Items','Fulfillment','Delivery','Total'].forEach(function(h){
-    html+='<th style="padding:8px 10px;text-align:left;font-weight:600;color:var(--text-2);white-space:nowrap">'+h+'</th>';
+  // Sort
+  filtered.sort(function(a,b){
+    var av,bv;
+    if(sheetSortCol==='date'){av=a.date||'';bv=b.date||'';}
+    else if(sheetSortCol==='name'){av=a.name||'';bv=b.name||'';}
+    else if(sheetSortCol==='fulfillment'){av=a.fulfillment||'';bv=b.fulfillment||'';}
+    else if(sheetSortCol==='delivery'){av=a.delivery||'';bv=b.delivery||'';}
+    else if(sheetSortCol==='total'){av=a.total||0;bv=b.total||0;}
+    else{av='';bv='';}
+    if(av<bv)return -1*sheetSortDir;
+    if(av>bv)return 1*sheetSortDir;
+    return 0;
+  });
+
+  var cols=[
+    {key:'name',label:'Name'},{key:'wix',label:'Wix #'},
+    {key:'date',label:'Date'},{key:'shift',label:'Shift'},
+    {key:'type',label:'Type'},{key:'items',label:'Items'},
+    {key:'fulfillment',label:'Fulfillment'},{key:'delivery',label:'Delivery'},
+    {key:'total',label:'Total'}
+  ];
+  var sortable=['name','date','fulfillment','delivery','total'];
+
+  var html='<div class="sheet-table-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px">';
+  html+='<thead><tr style="border-bottom:2px solid var(--border)">';
+  cols.forEach(function(c){
+    var canSort=sortable.indexOf(c.key)>=0;
+    var isActive=sheetSortCol===c.key;
+    var arrow=isActive?(sheetSortDir===-1?' ↓':' ↑'):'';
+    var thClick=canSort?(' onclick="sheetSort(\'' + c.key + '\')"'):''; html+='<th style="padding:8px 10px;text-align:left;font-weight:600;color:var(--text-2);white-space:nowrap'+(canSort?';cursor:pointer':'')+'"+thClick+">'+c.label+'<span class="sort-arrow">'+arrow+'</span></th>';
   });
   html+='</tr></thead><tbody>';
   filtered.forEach(function(o,i){
     var bg=i%2===0?'':'background:var(--bg)';
     html+='<tr style="border-bottom:1px solid var(--border);cursor:pointer;'+bg+'" onclick="openModal('+o.id+')">';
     html+='<td style="padding:7px 10px;font-weight:600">'+esc(o.name)+'</td>';
-    html+='<td style="padding:7px 10px;color:var(--text-2);font-family:monospace">'+esc(o.wix)+'</td>';
+    html+='<td style="padding:7px 10px;color:var(--text-2);font-family:monospace;font-size:11px">'+esc(o.wix)+'</td>';
     html+='<td style="padding:7px 10px;white-space:nowrap">'+(o.date?fmtS(new Date(o.date+'T12:00')):'—')+'</td>';
     html+='<td style="padding:7px 10px">'+esc(o.shift||'—')+'</td>';
     html+='<td style="padding:7px 10px">'+esc(o.type||'—')+'</td>';
-    html+='<td style="padding:7px 10px;max-width:200px">'+o.items.map(function(x){return esc(x.p)+' ×'+x.q;}).join(', ')+'</td>';
+    html+='<td style="padding:7px 10px;max-width:180px;font-size:11px">'+o.items.map(function(x){return esc(x.p)+' ×'+x.q;}).join(', ')+'</td>';
     html+='<td style="padding:7px 10px"><span class="tag '+(o.fulfillment==='fulfilled'?'t-ful':'t-unf')+'">'+esc(o.fulfillment)+'</span></td>';
     html+='<td style="padding:7px 10px"><span class="tag '+(o.delivery==='delivered'?'t-del':'t-pend')+'">'+esc(o.delivery)+'</span></td>';
     html+='<td style="padding:7px 10px">'+(o.total?'$'+o.total:'—')+'</td>';
