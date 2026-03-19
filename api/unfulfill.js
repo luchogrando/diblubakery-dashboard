@@ -10,7 +10,8 @@ module.exports = async function handler(req, res) {
 
   const auth = req.headers.authorization || '';
   const token = auth.replace('Bearer ', '');
-  if (!isValidToken(token)) return res.status(401).json({ error: 'Unauthorized' });
+  const authUser = await requireAuth(token);
+  if (!authUser) return res.status(401).json({ error: 'Unauthorized' });
 
   const { wixOrderNumber } = req.body || {};
   if (!wixOrderNumber) return res.status(400).json({ error: 'Missing wixOrderNumber' });
@@ -62,8 +63,8 @@ module.exports = async function handler(req, res) {
     // Step 3: Delete each fulfillment
     for (const f of fulfillments) {
       const delRes = await fetch(
-        `https://www.wixapis.com/ecom/v1/fulfillments/orders/${order.id}/fulfillments/${f.id}`,
-        { method: 'DELETE', headers }
+        `https://www.wixapis.com/ecom/v1/fulfillments/orders/${order.id}/fulfillments/${f.id}/delete-fulfillment`,
+        { method: 'POST', headers, body: '{}' }
       );
       const delText = await delRes.text();
       console.log(`Delete fulfillment ${f.id} status:`, delRes.status, delText);
@@ -78,13 +79,4 @@ module.exports = async function handler(req, res) {
   }
 };
 
-function isValidToken(token) {
-  const users = (process.env.USERS || '').split(',');
-  return users.some(u => {
-    const [username, password] = u.trim().split(':');
-    try {
-      const decoded = Buffer.from(token, 'base64').toString('utf8');
-      return decoded === `${username}:${password}`;
-    } catch { return false; }
-  });
-}
+const { requireAuth } = require('./_auth');
