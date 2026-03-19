@@ -2,7 +2,7 @@
 // Returns all orders from Google Sheets
 // Also handles auth check via USERS env variable
 
-const { readOrders, appendOrder } = require('./_sheets');
+const { readOrders, appendOrder, deleteOrder } = require('./_sheets');
 
 const ALLOWED_ORIGINS = ['https://diblubakery-dashboard.vercel.app'];
 
@@ -12,22 +12,27 @@ module.exports = async function handler(req, res) {
   if (ALLOWED_ORIGINS.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   // Auth check — Bearer token must match a known user token
   const auth = req.headers.authorization || '';
   const token = auth.replace('Bearer ', '');
-  if (!isValidToken(token)) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  const authUser = await requireAuth(token);
+  if (!authUser) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
     if (req.method === 'POST') {
       const order = req.body;
       if (!order || !order.wix) return res.status(400).json({ error: 'Invalid order' });
       await appendOrder(order);
+      return res.status(200).json({ ok: true });
+    }
+    if (req.method === 'DELETE') {
+      const { id } = req.body || {};
+      if (!id) return res.status(400).json({ error: 'Missing id' });
+      await deleteOrder(id);
       return res.status(200).json({ ok: true });
     }
     const orders = await readOrders();
@@ -38,15 +43,6 @@ module.exports = async function handler(req, res) {
   }
 };
 
-function isValidToken(token) {
-  // USERS env var format: "username:password:role,username2:password2:role2"
-  const users = (process.env.USERS || '').split(',');
-  return users.some(u => {
-    const [username, password] = u.trim().split(':');
-    // token is base64(username:password)
-    try {
-      const decoded = Buffer.from(token, 'base64').toString('utf8');
-      return decoded === `${username}:${password}`;
-    } catch { return false; }
-  });
+const { requireAuth } = require('./_auth');
+function isValidToken_unused() {
 }
