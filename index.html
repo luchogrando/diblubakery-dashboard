@@ -1331,14 +1331,14 @@ function renderRem(){
   list.forEach(function(o){
     var on=!!remSel[o.id];var msg=remMsgs[o.id]!==undefined?remMsgs[o.id]:buildMsg(o);var editing=!!remMsgs['edit_'+o.id];
     var d=o.date?fmtS(new Date(o.date+'T12:00')):'Custom date';
-    html+='<div class="rcard"><div class="rtop">';
+    var sent=!!REMINDERS_SENT[String(o.id)];
+    html+='<div class="rcard" style="'+(sent?'opacity:0.5;pointer-events:none;background:var(--bg)':'')+'"><div class="rtop">';
     html+='<div class="rchk'+(on?' on':'')+'" onclick="toggleRem('+o.id+')">'+(on?'&#x2713;':'')+'</div>';
     html+='<div class="rinfo"><div class="rname">'+esc(o.name)+'</div><div class="rord">Wix '+esc(o.wix)+'</div>';
     html+='<div class="rsub">'+d+(o.shift?' \u00b7 '+o.shift:'')+' \u00b7 '+o.type+'</div>';
     if(editing){html+='<textarea id="re'+o.id+'" class="msginp" rows="3" style="margin-top:8px">'+esc(msg)+'</textarea><div style="display:flex;gap:7px;margin-top:6px"><button class="sbtn" onclick="saveEdit('+o.id+')">Save</button><button class="ebtn" onclick="cancelEdit('+o.id+')">Cancel</button></div>';}
     else{html+='<div class="rmsgbox" onclick="openEdit('+o.id+')">'+esc(msg)+'</div>';}
     html+='</div></div>';
-    var sent=!!REMINDERS_SENT[String(o.id)];
     if(!editing){
       html+='<div class="racted">';
       if(sent){
@@ -1429,8 +1429,8 @@ function showSheet(){
 }
 
 function sheetSort(col){
-  if(sheetSortCol===col)sheetSortDir*=-1;
-  else{sheetSortCol=col;sheetSortDir=-1;}
+  if(sheetSortCol===col){sheetSortDir*=-1;}
+  else{sheetSortCol=col;sheetSortDir=1;}
   renderSheet();
 }
 
@@ -1482,7 +1482,7 @@ function renderSheet(){
   cols.forEach(function(c){
     var canSort=sortable.indexOf(c.key)>=0;
     var isActive=sheetSortCol===c.key;
-    var arrow=isActive?(sheetSortDir===-1?' ↓':' ↑'):'';
+    var arrow=isActive?(sheetSortDir===1?' ↑':' ↓'):(canSort?' ↕':'');
     var thClick=canSort?(' onclick="sheetSort(\'' + c.key + '\')"'):''; html+='<th style="padding:8px 10px;text-align:left;font-weight:600;color:var(--text-2);white-space:nowrap'+(canSort?';cursor:pointer':'')+'"+thClick+">'+c.label+'<span class="sort-arrow">'+arrow+'</span></th>';
   });
   html+='</tr></thead><tbody>';
@@ -1750,7 +1750,7 @@ function renderAdminPres(){
   if(unconfigured.length){
     html+='<div style="background:var(--red-light);border:1.5px solid #f09090;border-radius:8px;padding:12px 14px;margin-bottom:14px">';
     html+='<div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px">⚠️ '+unconfigured.length+' product'+(unconfigured.length>1?'s':'')+' from Wix need configuration</div>';
-    unconfigured.forEach(function(name){
+    unconfigured.slice().sort(function(a,b){return a.toLowerCase()<b.toLowerCase()?-1:1;}).forEach(function(name){
       var pr=PRODS[name];var sid='cb_'+name.replace(/[^a-z0-9]/gi,'_');
       html+='<div class="combo-row" id="card-'+sid+'" style="border-color:#f09090;margin-bottom:6px">';
       html+='<div class="combo-hd" style="background:#fdf0f0" onclick="toggleCombo(\''+sid+'\')">';
@@ -1767,8 +1767,8 @@ function renderAdminPres(){
     });
     html+='</div>';
   }
-  // Configured products
-  Object.keys(PRODS).forEach(function(name){
+  // Configured products — sorted alphabetically
+  Object.keys(PRODS).sort(function(a,b){return a.toLowerCase()<b.toLowerCase()?-1:1;}).forEach(function(name){
     var pr=PRODS[name];
     if(!pr.u||Object.keys(pr.u).length===0)return; // shown above
     var sid='cb_'+name.replace(/[^a-z0-9]/gi,'_');
@@ -1837,7 +1837,7 @@ function saveNewPres(){
     if(sel&&inp&&sel.value)u[sel.value]=(u[sel.value]||0)+(parseInt(inp.value)||1);
   });
   PRODS[name]={u:u};
-  closeModal();renderAdminPres();
+  closeModal();renderAdminPres();apiSaveConfig();
 }
 function buildUnitsHtml(name,sid){
   var units=PRODS[name].u||{};
