@@ -349,13 +349,14 @@ async function readSettings() {
 }
 
 async function writeSettings(settings) {
+  // Read existing settings first, then merge
+  const existing = await readSettings();
+  const merged = { ...existing, ...settings };
   const token = await getAccessToken();
-  // Clear existing data first
   await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent('Messages!A2:B')}:clear`, {
     method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
   });
-  // Write all settings as rows
-  const values = Object.entries(settings).map(([k, v]) => [k, v]);
+  const values = Object.entries(merged).map(([k, v]) => [k, v]);
   if (values.length > 0) {
     await sheetsUpdate('Messages!A2:B', values);
   }
