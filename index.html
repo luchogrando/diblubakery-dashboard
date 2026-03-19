@@ -835,7 +835,14 @@ function renderOrders(){
   var customCount=ORDERS.filter(function(o){return o.customDate&&!o.date;}).length;
   document.getElementById('unalloc-count').textContent=customCount;
   document.getElementById('unalloc-banner').style.display=customCount>0?'flex':'none';
-  var recSugs=RECURRING.filter(function(r){return r.active&&!r.activatedThisWeek;});
+  var weekDays=weekDates(oW).map(function(d){return isoDate(d);});
+  var recSugs=RECURRING.filter(function(r){
+    if(!r.active)return false;
+    var days=weekDates(oW);var targetDay=days.find(function(d){return d.getDay()===r.dayOfWeek;});
+    if(!targetDay)return false;
+    var dateKey=isoDate(targetDay);
+    return !r.activatedDates||r.activatedDates.indexOf(dateKey)<0;
+  });
   var recSection=document.getElementById('rec-inline-section');
   var recCards=document.getElementById('rec-inline-cards');
   if(recSugs.length>0){
@@ -1183,7 +1190,13 @@ function sendFbBatch(){var sel=ORDERS.filter(function(o){return !!fbSel[o.id];})
 
 function renderRecurring(){
   var sugHtml='';
-  RECURRING.filter(function(r){return r.active&&!r.activatedThisWeek;}).forEach(function(r){
+  RECURRING.filter(function(r){
+    if(!r.active)return false;
+    var days=weekDates(rW);var targetDay=days.find(function(d){return d.getDay()===r.dayOfWeek;});
+    if(!targetDay)return false;
+    var dateKey=isoDate(targetDay);
+    return !r.activatedDates||r.activatedDates.indexOf(dateKey)<0;
+  }).forEach(function(r){
     sugHtml+='<div class="rec-suggestion"><div class="rec-sug-text">'+esc(r.name)+' \u2014 every '+dayNames[r.dayOfWeek]+' '+r.shift+' ('+r.type+')<br><span style="font-size:10px;color:var(--text-2)">'+r.items.map(function(i){return i.p+' \u00d7'+i.q;}).join(', ')+'</span></div><div class="sug-actions"><button class="sug-btn sug-activate" onclick="activateRecurring('+r.id+')">Activate this week</button><button class="sug-btn sug-dismiss" onclick="dismissRecurring('+r.id+')">Dismiss</button></div></div>';
   });
   if(!sugHtml)sugHtml='<div style="padding:12px 14px;font-size:12px;color:var(--text-3);font-style:italic;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:8px">No suggestions this week \u2014 all activated or dismissed.</div>';
@@ -1199,12 +1212,45 @@ function renderRecurring(){
 }
 function activateRecurring(id){
   var r=RECURRING.find(function(x){return String(x.id)===String(id);});if(!r)return;
-  r.activatedThisWeek=true;
   var days=weekDates(oW);var targetDay=days.find(function(d){return d.getDay()===r.dayOfWeek;});
-  if(targetDay){var newId=ORDERS.reduce(function(m,o){return Math.max(m,o.id);},0)+1;ORDERS.push({id:newId,wix:'#REC'+id+'_'+newId,name:r.name,phone:r.phone,date:isoDate(targetDay),shift:r.shift,type:r.type,fulfillment:'unfulfilled',delivery:'pending',customDate:false,recurring:true,edited:false,editedBy:'',notes:'Recurring order',items:r.items.map(function(i){return{p:i.p,q:i.q};})});}
+  if(!targetDay)return;
+  var dateKey=isoDate(targetDay);
+  // Track activated dates per recurring order
+  if(!r.activatedDates)r.activatedDates=[];
+  if(r.activatedDates.indexOf(dateKey)<0)r.activatedDates.push(dateKey);
+  // Check if order already exists in Sheet for this date
+  var exists=ORDERS.find(function(o){return o.recurring&&o.wix.indexOf('#REC'+id+'_')===0&&o.date===dateKey;});
+  if(!exists){
+    var newOrder={
+      id:Date.now(),
+      wix:'#REC'+id+'_'+Date.now(),
+      name:r.name,phone:r.phone,
+      date:dateKey,shift:r.shift,type:r.type,
+      fulfillment:'unfulfilled',delivery:'pending',
+      customDate:false,recurring:true,
+      edited:false,editedBy:'',
+      notes:'Recurring order',
+      items:r.items.map(function(i){return{p:i.p,q:i.q};}),
+      total:null,createdAt:new Date().toISOString()
+    };
+    ORDERS.push(newOrder);
+    // Save to Sheet
+    apiFetch('/api/orders',{method:'POST',body:JSON.stringify(newOrder)}).catch(console.warn);
+  }
+  apiSaveRecurring();
   renderRecurring();renderOrders();
 }
-function dismissRecurring(id){var r=RECURRING.find(function(x){return String(x.id)===String(id);});if(r)r.activatedThisWeek=true;renderRecurring();renderOrders();}
+function dismissRecurring(id){
+  var r=RECURRING.find(function(x){return String(x.id)===String(id);});if(!r)return;
+  var days=weekDates(oW);var targetDay=days.find(function(d){return d.getDay()===r.dayOfWeek;});
+  if(targetDay){
+    if(!r.activatedDates)r.activatedDates=[];
+    var dateKey=isoDate(targetDay);
+    if(r.activatedDates.indexOf(dateKey)<0)r.activatedDates.push(dateKey);
+  }
+  apiSaveRecurring();
+  renderRecurring();renderOrders();
+}
 function toggleRecurring(id){var r=RECURRING.find(function(x){return String(x.id)===String(id);});if(r)r.active=!r.active;renderRecurring();apiSaveRecurring();}
 function deleteRecurring(id){if(confirm('Delete this recurring order?')){RECURRING.splice(RECURRING.findIndex(function(x){return String(x.id)===String(id);}),1);renderRecurring();apiSaveRecurring();}}
 
@@ -1247,7 +1293,7 @@ function saveRecurringForm(id){
   var rows=document.getElementById('rec-items').querySelectorAll('.product-row');
   var items=[];rows.forEach(function(row){var s=row.querySelector('select');var inp=row.querySelector('input[type="number"]');if(s&&inp)items.push({p:s.value,q:parseInt(inp.value)||1});});
   if(id){var r=RECURRING.find(function(x){return String(x.id)===String(id);});if(r){r.name=name;r.phone=phone;r.dayOfWeek=dow;r.shift=shift;r.type=type;r.items=items;}}
-  else{RECURRING.push({id:recIdCounter++,name:name,phone:phone,dayOfWeek:dow,shift:shift,type:type,items:items,active:true,activatedThisWeek:false});}
+  else{RECURRING.push({id:recIdCounter++,name:name,phone:phone,dayOfWeek:dow,shift:shift,type:type,items:items,active:true,activatedDates:[]});}
   closeModal();renderRecurring();apiSaveRecurring();
 }
 
