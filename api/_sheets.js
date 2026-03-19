@@ -294,7 +294,12 @@ async function writeRecurring(recurring) {
       r.dayOfWeek !== undefined ? String(r.dayOfWeek) : '0',
       r.notes || '',
       r.active !== false ? '1' : '0',
-      JSON.stringify(r.activatedDates || []),
+      JSON.stringify((r.activatedDates || []).filter(function(d){
+        // Keep only last 8 weeks to avoid unbounded growth
+        var cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - 56);
+        return new Date(d) >= cutoff;
+      })),
     ]);
     await sheetsAppend('Recurring!A:J', values);
   }
@@ -362,4 +367,39 @@ async function writeSettings(settings) {
   }
 }
 
-module.exports = { readOrders, appendOrder, updateOrder, readProducts, writeProducts, readPresentations, writePresentations, readTasks, writeTasks, readRecurring, writeRecurring, readUsers, writeUsers, readSettings, writeSettings };
+
+// ── REMINDERS ────────────────────────────────────────────────
+// Reminders tab: A=order_id, B=wix, C=sent_at, D=sent_by
+
+async function readReminders() {
+  try {
+    const data = await sheetsGet('Reminders!A2:D');
+    const rows = data.values || [];
+    const result = {};
+    rows.filter(r => r[0]).forEach(r => {
+      result[String(r[0])] = { wix: r[1]||'', sentAt: r[2]||'', sentBy: r[3]||'' };
+    });
+    return result;
+  } catch(e) { return {}; }
+}
+
+async function appendReminder(orderId, wix, sentBy) {
+  const values = [[String(orderId), wix, new Date().toISOString(), sentBy]];
+  await sheetsAppend('Reminders!A:D', values);
+}
+
+// ── DELETE ORDER ─────────────────────────────────────────────
+async function deleteOrder(id) {
+  const orders = await readOrders();
+  const remaining = orders.filter(o => String(o.id) !== String(id));
+  const token = await getAccessToken();
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent('Orders!A2:Q')}:clear`, {
+    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+  });
+  if (remaining.length > 0) {
+    const values = remaining.map(orderToRow);
+    await sheetsAppend('Orders!A:Q', values);
+  }
+}
+
+module.exports = { readOrders, appendOrder, updateOrder, deleteOrder, readProducts, writeProducts, readPresentations, writePresentations, readTasks, writeTasks, readRecurring, writeRecurring, readUsers, writeUsers, readSettings, writeSettings, readReminders, appendReminder };
