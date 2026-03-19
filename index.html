@@ -962,7 +962,7 @@ function renderOrders(){
         html2+='<div class="card-wix">Recurring · every '+dayNames[r.dayOfWeek]+'</div>';
         html2+='<div class="card-tags"><span class="tag t-recurring">recurring</span></div>';
         html2+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
-        html2+='<button class="btn accent" style="font-size:11px;padding:5px 12px" onclick="undoDismiss('+r.id+',''+dateKey+'')">Undo dismiss</button>';
+        html2+='<button class="btn accent" style="font-size:11px;padding:5px 12px" onclick="undoDismiss('+r.id+',\''+dateKey+'\')">&Undo dismiss</button>';
         html2+='</div></div>';
       });
       html2+='</div>';
