@@ -1,7 +1,7 @@
 // api/config.js — GET /api/config and POST /api/config
 // Reads and writes BASE_PRODUCTS and PRODS from Google Sheets
 
-const { readProducts, writeProducts, readPresentations, writePresentations } = require('./_sheets');
+const { readProducts, writeProducts, readPresentations, writePresentations, readSettings, writeSettings } = require('./_sheets');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,23 +15,25 @@ module.exports = async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      // Read both tables
-      const [products, presentations] = await Promise.all([
+      const [products, presentations, settings] = await Promise.all([
         readProducts(),
         readPresentations(),
+        readSettings(),
       ]);
       return res.status(200).json({
         ok: true,
         products: products || {},
         presentations: presentations || {},
+        settings: settings || {},
       });
     }
 
     if (req.method === 'POST') {
-      const { products, presentations } = req.body || {};
+      const { products, presentations, settings } = req.body || {};
       const ops = [];
       if (products !== undefined) ops.push(writeProducts(products));
       if (presentations !== undefined) ops.push(writePresentations(presentations));
+      if (settings !== undefined) ops.push(writeSettings(settings));
       await Promise.all(ops);
       return res.status(200).json({ ok: true });
     }
