@@ -661,6 +661,26 @@ async function apiSaveRecurring(){
   } catch(e){ console.warn('Could not save recurring:', e.message); }
 }
 
+async function apiLoadReminders(){
+  try {
+    var data = await apiFetch('/api/reminders');
+    if(data.reminders) REMINDERS_SENT = data.reminders;
+  } catch(e){ console.warn('Could not load reminders:', e.message); }
+}
+
+async function apiMarkReminderSent(o){
+  try {
+    REMINDERS_SENT[String(o.id)] = {sentAt: new Date().toISOString(), sentBy: currentUser};
+    await apiFetch('/api/reminders', {method:'POST', body: JSON.stringify({orderId: o.id, wix: o.wix})});
+  } catch(e){ console.warn('Could not save reminder:', e.message); }
+}
+
+async function apiDeleteOrder(id){
+  try {
+    await apiFetch('/api/orders', {method:'DELETE', body: JSON.stringify({id: id})});
+  } catch(e){ console.warn('Could not delete order:', e.message); }
+}
+
 async function apiSaveUsers(users){
   try {
     // Server merges passwords — just send what we have (passwords may be empty for existing users)
@@ -759,6 +779,7 @@ async function doLogin(){
   await apiLoadOrders();
   await apiLoadTasks();
   await apiLoadRecurring();
+  await apiLoadReminders();
   addRow();
   renderOrders();
   updateTasksBadge();
@@ -824,6 +845,7 @@ function rebuildTeam(){
 }
 
 var FEEDBACK_SENT={};
+var REMINDERS_SENT={};  // order_id -> {sentAt, sentBy}
 var fbSel={};
 
 var WEEK0=(function(){var d=new Date();d.setDate(d.getDate()-d.getDay()+1);d.setHours(12,0,0,0);return d;})();
@@ -1071,7 +1093,12 @@ function openModal(id){
   } else {
     h+='<button class="btn green" onclick="setDelivered('+id+')" style="width:100%;padding:11px;font-size:13px">Mark as Delivered</button>';
   }
-  h+='<button class="btn wa" onclick="sendWA('+id+')" style="width:100%;padding:11px;font-size:13px">Send WhatsApp reminder</button>';
+  if(currentRole==='admin'){
+    h+='<div style="display:flex;gap:8px;margin-top:4px">';
+    h+='<button class="btn" onclick="openEditOrderModal('+id+')" style="flex:1;padding:9px">Edit order</button>';
+    h+='<button class="btn" onclick="deleteOrderConfirm('+id+')" style="flex:1;padding:9px;color:var(--red);border-color:var(--red-light)">Delete</button>';
+    h+='</div>';
+  }
   h+='</div>';
   document.getElementById('mbox').innerHTML=h;
   document.getElementById('overlay').className='overlay on';
@@ -1118,6 +1145,69 @@ function setDelivered(id){
 function undoDelivered(id){
   if(currentRole!=='admin')return alert('Only admin can undo delivery status.');
   var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(o){o.delivery='pending';o.edited=true;o.editedBy=currentUser;apiUpdateOrder(id,{delivery:'pending',edited:true,editedBy:currentUser});}openModal(id);renderOrders();
+}
+
+function deleteOrderConfirm(id){
+  var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;
+  if(!confirm('Delete order '+o.wix+' for '+o.name+'? This cannot be undone.'))return;
+  ORDERS.splice(ORDERS.findIndex(function(x){return String(x.id)===String(id);}),1);
+  apiDeleteOrder(id);
+  closeModal();
+  renderOrders();
+}
+
+function openEditOrderModal(id){
+  var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;
+  var h='<div class="mtitle">Edit order<button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
+  h+='<div style="margin-bottom:10px"><div class="flabel">Name</div><input class="finput" type="text" id="eo-name" value="'+esc(o.name)+'"></div>';
+  h+='<div style="margin-bottom:10px"><div class="flabel">Phone</div><input class="finput" type="text" id="eo-phone" value="'+esc(o.phone)+'"></div>';
+  h+='<div style="margin-bottom:10px"><div class="flabel">Wix order #</div><input class="finput" type="text" id="eo-wix" value="'+esc(o.wix)+'"></div>';
+  h+='<div class="form-g2" style="margin-bottom:10px">';
+  h+='<div><div class="flabel">Date</div><input class="finput" type="date" id="eo-date" value="'+(o.date||'')+'"></div>';
+  h+='<div><div class="flabel">Shift</div><select class="finput" id="eo-shift"><option value="morning"'+(o.shift==='morning'?' selected':'')+'>Morning</option><option value="afternoon"'+(o.shift==='afternoon'?' selected':'')+'>Afternoon</option></select></div>';
+  h+='</div>';
+  h+='<div style="margin-bottom:10px"><div class="flabel">Type</div><select class="finput" id="eo-type"><option value="pickup"'+(o.type==='pickup'?' selected':'')+'>Pick up</option><option value="delivery"'+(o.type==='delivery'?' selected':'')+'>Delivery</option></select></div>';
+  h+='<div style="margin-bottom:16px"><div class="flabel">Notes</div><input class="finput" type="text" id="eo-notes" value="'+esc(o.notes||'')+'"></div>';
+  h+='<div style="margin-bottom:10px"><div class="flabel">Items</div><div id="eo-items">';
+  o.items.forEach(function(it,i){
+    h+='<div class="product-row" id="eorow-'+i+'">';
+    h+='<select>'+Object.keys(BASE_PRODUCTS).map(function(p){return '<option value="'+esc(p)+'"'+(it.p===p?' selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select>';
+    h+='<input type="number" min="1" value="'+it.q+'">';
+    h+='<button onclick="this.parentNode.remove()">&#x00D7;</button>';
+    h+='</div>';
+  });
+  h+='</div><button class="add-btn" onclick="addEoRow()" style="margin-top:6px">+ add product</button></div>';
+  h+='<div class="mactions"><button class="btn accent" onclick="saveEditOrder('+id+')" style="width:100%;padding:11px;font-size:13px">Save changes</button></div>';
+  document.getElementById('mbox').innerHTML=h;
+  document.getElementById('overlay').className='overlay on';
+}
+
+function addEoRow(){
+  var c=document.getElementById('eo-items');var r=document.createElement('div');r.className='product-row';
+  r.innerHTML='<select>'+Object.keys(BASE_PRODUCTS).map(function(p){return '<option value="'+esc(p)+'">'+esc(p)+'</option>';}).join('')+'</select><input type="number" min="1" value="1"><button onclick="this.parentNode.remove()">&#x00D7;</button>';
+  c.appendChild(r);
+}
+
+function saveEditOrder(id){
+  var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;
+  o.name=document.getElementById('eo-name').value.trim()||o.name;
+  o.phone=document.getElementById('eo-phone').value.trim();
+  o.wix=document.getElementById('eo-wix').value.trim()||o.wix;
+  o.date=document.getElementById('eo-date').value||null;
+  o.shift=document.getElementById('eo-shift').value;
+  o.type=document.getElementById('eo-type').value;
+  o.notes=document.getElementById('eo-notes').value.trim();
+  o.edited=true;o.editedBy=currentUser;
+  var rows=document.getElementById('eo-items').querySelectorAll('.product-row');
+  var items=[];
+  rows.forEach(function(r){
+    var sel=r.querySelector('select');var inp=r.querySelector('input');
+    if(sel&&inp&&sel.value)items.push({p:sel.value,q:parseInt(inp.value)||1});
+  });
+  if(items.length)o.items=items;
+  apiUpdateOrder(id,{name:o.name,phone:o.phone,wix:o.wix,date:o.date,shift:o.shift,type:o.type,notes:o.notes,items:o.items,edited:true,editedBy:currentUser});
+  closeModal();
+  renderOrders();
 }
 
 function waEncode(text){
@@ -1248,20 +1338,38 @@ function renderRem(){
     if(editing){html+='<textarea id="re'+o.id+'" class="msginp" rows="3" style="margin-top:8px">'+esc(msg)+'</textarea><div style="display:flex;gap:7px;margin-top:6px"><button class="sbtn" onclick="saveEdit('+o.id+')">Save</button><button class="ebtn" onclick="cancelEdit('+o.id+')">Cancel</button></div>';}
     else{html+='<div class="rmsgbox" onclick="openEdit('+o.id+')">'+esc(msg)+'</div>';}
     html+='</div></div>';
-    if(!editing)html+='<div class="racted"><button class="ebtn" onclick="openEdit('+o.id+')">Edit message</button><button class="sbtn" onclick="sendWArem('+o.id+')">Send now</button></div>';
+    var sent=!!REMINDERS_SENT[String(o.id)];
+    if(!editing){
+      html+='<div class="racted">';
+      if(sent){
+        var sr=REMINDERS_SENT[String(o.id)];
+        html+='<span style="font-size:11px;color:var(--green);font-weight:600">&#10003; Sent by '+esc(sr.sentBy||'')+'</span>';
+      } else {
+        html+='<button class="ebtn" onclick="openEdit('+o.id+')">Edit message</button>';
+        html+='<button class="sbtn" onclick="sendWArem('+o.id+')">Send now</button>';
+      }
+      html+='</div>';
+    }
     html+='</div>';
   });
   document.getElementById('rem-body').innerHTML=html||'<div style="padding:32px;text-align:center;color:var(--text-3);font-size:13px">No pending orders this week</div>';
 }
-function toggleRem(id){remSel[id]=!remSel[id];renderRem();}
+function toggleRem(id){if(REMINDERS_SENT[String(id)])return;remSel[id]=!remSel[id];renderRem();}
 function openEdit(id){remMsgs['edit_'+id]=true;renderRem();}
 function cancelEdit(id){delete remMsgs['edit_'+id];renderRem();}
 function saveEdit(id){var ta=document.getElementById('re'+id);if(ta)remMsgs[id]=ta.value;delete remMsgs['edit_'+id];renderRem();}
-function sendWArem(id){var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+waEncode(buildMsg(o)),'_blank');}
+function sendWArem(id){
+  var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;
+  if(REMINDERS_SENT[String(o.id)])return;
+  window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+waEncode(buildMsg(o)),'_blank');
+  apiMarkReminderSent(o);
+  renderRem();
+}
 var _batchQueue=[];var _batchType='';
 function sendBatch(){
-  _batchQueue=ORDERS.filter(function(o){return !!remSel[o.id];});
+  _batchQueue=ORDERS.filter(function(o){return !!remSel[o.id]&&!REMINDERS_SENT[String(o.id)];});
   _batchType='rem';
+  if(!_batchQueue.length){alert('All selected reminders already sent!');return;}
   sendNextInBatch();
 }
 function sendFbBatch(){
@@ -1273,6 +1381,7 @@ function sendNextInBatch(){
   if(!_batchQueue.length){renderRem();renderFeedback();return;}
   var o=_batchQueue.shift();
   if(_batchType==='fb'){FEEDBACK_SENT[o.id]=true;}
+  if(_batchType==='rem'){apiMarkReminderSent(o);}
   window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+waEncode(_batchType==='fb'?buildFbMsg(o):buildMsg(o)),'_blank');
   if(_batchQueue.length>0){
     var next=_batchQueue[0];
