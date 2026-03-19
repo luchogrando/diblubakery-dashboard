@@ -783,7 +783,7 @@ async function doLogin(){
   addRow();
   renderOrders();
   updateTasksBadge();
-  if(isAdmin){updateAdminBadge();setTimeout(showUnconfiguredPopup,400);}
+  if(isAdmin){updateAdminBadge();}
   document.getElementById('p-wlabel').textContent=fmtWeek(pW);
   document.getElementById('t-wlabel').textContent=fmtWeek(tW);
   document.getElementById('r-wlabel').textContent=fmtWeek(rW);
@@ -1459,6 +1459,7 @@ function renderSheet(){
     var av,bv;
     if(sheetSortCol==='date'){av=a.date||'';bv=b.date||'';}
     else if(sheetSortCol==='name'){av=a.name||'';bv=b.name||'';}
+    else if(sheetSortCol==='wix'){av=a.wix||'';bv=b.wix||'';}
     else if(sheetSortCol==='fulfillment'){av=a.fulfillment||'';bv=b.fulfillment||'';}
     else if(sheetSortCol==='delivery'){av=a.delivery||'';bv=b.delivery||'';}
     else if(sheetSortCol==='total'){av=a.total||0;bv=b.total||0;}
@@ -1475,7 +1476,7 @@ function renderSheet(){
     {key:'fulfillment',label:'Fulfillment'},{key:'delivery',label:'Delivery'},
     {key:'total',label:'Total'}
   ];
-  var sortable=['name','date','fulfillment','delivery','total'];
+  var sortable=['name','wix','date','fulfillment','delivery','total'];
 
   var html='<div class="sheet-table-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px">';
   html+='<thead><tr style="border-bottom:2px solid var(--border)">';
@@ -1825,7 +1826,7 @@ function addNewPresUnit(){
   var c=document.getElementById('np-units');var r=document.createElement('div');
   r.className='unit-row';
   r.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:6px';
-  r.innerHTML='<select style="flex:1;padding:5px 9px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;font-family:inherit">'+bpOptions+'</select><input type="number" min="1" value="1" style="width:56px;padding:5px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;text-align:center"><button onclick="this.parentNode.remove()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-3)">&#x00D7;</button>';
+  r.innerHTML='<select style="flex:1;padding:5px 9px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;font-family:inherit"><option value="">-- select --</option>'+bpOptions+'</select><input type="number" min="1" value="1" style="width:56px;padding:5px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;text-align:center"><button onclick="this.parentNode.remove()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-3)">&#x00D7;</button>';
   c.appendChild(r);
 }
 function saveNewPres(){
@@ -1837,13 +1838,13 @@ function saveNewPres(){
   rows.forEach(function(row){
     var sel=row.querySelector('select');
     var inp=row.querySelector('input[type="number"]');
-    if(sel&&sel.value&&inp){
+    if(sel&&sel.value&&sel.value!==''&&inp){
       var v=parseInt(inp.value)||1;
       u[sel.value]=(u[sel.value]||0)+v;
     }
   });
   PRODS[name]={u:u};
-  closeModal();renderAdminPres();apiSaveConfig();
+  closeModal();renderAdminPres();updateAdminBadge();apiSaveConfig();
 }
 function buildUnitsHtml(name,sid){
   var units=PRODS[name].u||{};
