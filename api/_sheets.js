@@ -272,7 +272,7 @@ async function readRecurring() {
         dayOfWeek: parseInt(r[6]) || 0,
         notes: r[7] || '',
         active: r[8] === '1' || r[8] === 1,
-        activatedThisWeek: r[9] === '1' || r[9] === 1,
+        activatedDates: (function(){ try{ return JSON.parse(r[9]||'[]'); }catch(e){ return []; } })(),
       };
     });
   } catch(e) { return []; }
@@ -294,7 +294,7 @@ async function writeRecurring(recurring) {
       r.dayOfWeek !== undefined ? String(r.dayOfWeek) : '0',
       r.notes || '',
       r.active !== false ? '1' : '0',
-      r.activatedThisWeek ? '1' : '0',
+      JSON.stringify(r.activatedDates || []),
     ]);
     await sheetsAppend('Recurring!A:J', values);
   }
