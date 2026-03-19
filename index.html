@@ -1169,7 +1169,34 @@ function openEdit(id){remMsgs['edit_'+id]=true;renderRem();}
 function cancelEdit(id){delete remMsgs['edit_'+id];renderRem();}
 function saveEdit(id){var ta=document.getElementById('re'+id);if(ta)remMsgs[id]=ta.value;delete remMsgs['edit_'+id];renderRem();}
 function sendWArem(id){var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+waEncode(buildMsg(o)),'_blank');}
-function sendBatch(){var sel=ORDERS.filter(function(o){return !!remSel[o.id];});var i=0;function next(){if(i>=sel.length)return;var o=sel[i++];window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+waEncode(buildMsg(o)),'_blank');setTimeout(next,900);}next();}
+var _batchQueue=[];var _batchType='';
+function sendBatch(){
+  _batchQueue=ORDERS.filter(function(o){return !!remSel[o.id];});
+  _batchType='rem';
+  sendNextInBatch();
+}
+function sendFbBatch(){
+  _batchQueue=ORDERS.filter(function(o){return !!fbSel[o.id];});
+  _batchType='fb';
+  sendNextInBatch();
+}
+function sendNextInBatch(){
+  if(!_batchQueue.length){renderRem();renderFeedback();return;}
+  var o=_batchQueue.shift();
+  if(_batchType==='fb'){FEEDBACK_SENT[o.id]=true;}
+  window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+waEncode(_batchType==='fb'?buildFbMsg(o):buildMsg(o)),'_blank');
+  if(_batchQueue.length>0){
+    var next=_batchQueue[0];
+    var h='<div class="mtitle">Sending batch <button class="xbtn" onclick="closeModal();_batchQueue=[];">&#x00D7;</button></div>';
+    h+='<div style="font-size:13px;color:var(--text-2);margin-bottom:16px">'+_batchQueue.length+' message'+(_batchQueue.length>1?'s':'')+' remaining. Next: <b>'+esc(next.name)+'</b></div>';
+    h+='<button class="btn accent" onclick="closeModal();sendNextInBatch();" style="width:100%;padding:11px;font-size:13px">Send next &rarr;</button>';
+    h+='<button class="btn" onclick="closeModal();_batchQueue=[];" style="width:100%;margin-top:8px;padding:9px">Stop sending</button>';
+    document.getElementById('mbox').innerHTML=h;
+    document.getElementById('overlay').className='overlay on';
+  } else {
+    renderRem();renderFeedback();
+  }
+}
 
 function renderFeedback(){
   document.getElementById('fb-wlabel').textContent=fmtWeek(fbW);
@@ -1199,7 +1226,7 @@ function buildFbMsg(o){
   return t.replace(/{name}/g,o.name.split(' ')[0]).replace(/{order}/g,o.wix).replace(/{items}/g,o.items.map(function(x){return x.p+' x'+x.q;}).join(', '));
 }
 function sendFbSingle(id){var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;FEEDBACK_SENT[id]=true;window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+waEncode(buildFbMsg(o)),'_blank');renderFeedback();}
-function sendFbBatch(){var sel=ORDERS.filter(function(o){return !!fbSel[o.id];});var i=0;function next(){if(i>=sel.length)return;var o=sel[i++];FEEDBACK_SENT[o.id]=true;window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+waEncode(buildFbMsg(o)),'_blank');setTimeout(next,900);}next();renderFeedback();}
+
 
 function renderRecurring(){
   var sugHtml='';
