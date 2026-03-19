@@ -386,8 +386,8 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
     </div>
     <div class="defbox">
       <div class="deflabel">Default reminder message</div>
-      <textarea id="def-msg" class="msginp" rows="3">Hi {name}! Just a reminder from Di Blu Bakery :) Your order {order} will be {type} on {date} in the {shift}. Can't wait for you to enjoy it!</textarea>
-      <div style="font-size:11px;color:var(--text-3);margin-top:5px">Variables: {name} {order} {date} {shift} {type} {items}</div>
+      <textarea id="def-msg" class="msginp" rows="3" onblur="apiSaveSettings()">Hi {name}! Just a reminder from Di Blu Bakery :) Your order {order} will be {type} on {date} in the {shift}. Can't wait for you to enjoy it!</textarea>
+      <div style="font-size:11px;color:var(--text-3);margin-top:5px">Variables: {name} {order} {date} {shift} {type} {items} &nbsp;·&nbsp; <a href="#" onclick="apiSaveSettings();return false;" style="color:var(--accent);font-weight:600">Save template</a></div>
     </div>
     <div class="bulkbar">
       <span style="font-size:12px;font-weight:500;color:var(--text-2)"><span id="rem-n">0</span> selected</span>
@@ -410,8 +410,8 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
     </div>
     <div class="defbox">
       <div class="deflabel">Feedback message template</div>
-      <textarea id="fb-msg" class="msginp" rows="2">Hi {name}! Hope you loved your Di Blu order 🥐 We'd love to hear how everything was! ✨</textarea>
-      <div style="font-size:11px;color:var(--text-3);margin-top:5px">Variables: {name} {order} {items}</div>
+      <textarea id="fb-msg" class="msginp" rows="2" onblur="apiSaveSettings()">Hi {name}! Hope you loved your Di Blu order We'd love to hear how everything was!</textarea>
+      <div style="font-size:11px;color:var(--text-3);margin-top:5px">Variables: {name} {order} {items} &nbsp;·&nbsp; <a href="#" onclick="apiSaveSettings();return false;" style="color:var(--accent);font-weight:600">Save template</a></div>
     </div>
     <div class="bulkbar">
       <span style="font-size:12px;font-weight:500;color:var(--text-2)"><span id="fb-n">0</span> selected</span>
@@ -541,12 +541,33 @@ async function apiLoadConfig(){
       Object.keys(PRODS).forEach(function(k){ delete PRODS[k]; });
       Object.keys(data.presentations).forEach(function(k){ PRODS[k] = data.presentations[k]; });
     }
+    // Load message templates from Sheet
+    if(data.settings){
+      if(data.settings.reminder_msg){
+        var remEl=document.getElementById('def-msg');
+        if(remEl)remEl.value=data.settings.reminder_msg;
+      }
+      if(data.settings.feedback_msg){
+        var fbEl=document.getElementById('fb-msg');
+        if(fbEl)fbEl.value=data.settings.feedback_msg;
+      }
+    }
     console.log('Config loaded from Sheet:', Object.keys(BASE_PRODUCTS).length, 'products,', Object.keys(PRODS).length, 'presentations');
   } catch(e){
     console.warn('Could not load config from Sheet:', e.message);
   }
 }
 
+async function apiSaveSettings(){
+  try {
+    var remMsg=document.getElementById('def-msg');
+    var fbMsg=document.getElementById('fb-msg');
+    var settings={};
+    if(remMsg)settings.reminder_msg=remMsg.value;
+    if(fbMsg)settings.feedback_msg=fbMsg.value;
+    await apiFetch('/api/config',{method:'POST',body:JSON.stringify({settings:settings})});
+  } catch(e){ console.warn('Could not save settings:',e.message); }
+}
 async function apiSaveConfig(){
   try {
     await apiFetch('/api/config', {
