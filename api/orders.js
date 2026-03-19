@@ -2,7 +2,7 @@
 // Returns all orders from Google Sheets
 // Also handles auth check via USERS env variable
 
-const { readOrders } = require('./_sheets');
+const { readOrders, appendOrder } = require('./_sheets');
 
 const ALLOWED_ORIGINS = ['https://diblubakery-dashboard.vercel.app'];
 
@@ -12,7 +12,7 @@ module.exports = async function handler(req, res) {
   if (ALLOWED_ORIGINS.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -24,6 +24,12 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    if (req.method === 'POST') {
+      const order = req.body;
+      if (!order || !order.wix) return res.status(400).json({ error: 'Invalid order' });
+      await appendOrder(order);
+      return res.status(200).json({ ok: true });
+    }
     const orders = await readOrders();
     return res.status(200).json({ orders });
   } catch (err) {
