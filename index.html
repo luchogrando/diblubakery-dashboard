@@ -339,6 +339,11 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
       <button class="fbtn" data-f="pending" onclick="setFilter(this)">Pending</button>
       <button class="fbtn" data-f="delivered" onclick="setFilter(this)">Delivered</button>
       <button class="fbtn" data-f="custom" onclick="setFilter(this)">Custom date</button>
+      <button class="fbtn" data-f="dismissed" onclick="setFilter(this)">Dismissed recurring</button>
+      <button class="btn" onclick="showSheet()" style="font-size:11px;padding:4px 11px;margin-left:4px">All orders &rarr;</button>
+    </div>
+    <div style="margin-bottom:10px">
+      <input type="text" id="order-search" class="finput" placeholder="Search by name..." oninput="renderOrders()" style="max-width:280px;padding:6px 10px;font-size:12px">
     </div>
     <div class="unalloc-banner" id="unalloc-banner">
       <span><b id="unalloc-count">0</b> orders with custom date — not yet allocated</span>
@@ -349,6 +354,25 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
       <div id="rec-inline-cards"></div>
     </div>
     <div id="orders-body"></div>
+  </div>
+
+  <!-- SHEET VIEW -->
+  <div class="page" id="page-sheet">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:16px;font-weight:700">All orders</div>
+      <button class="btn" onclick="showPage('orders')">← Back</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+      <input type="text" id="sheet-name-filter" class="finput" placeholder="Search by name..." oninput="sheetNameFilter=this.value;renderSheet()" style="max-width:220px;padding:6px 10px;font-size:12px">
+      <select class="finput" style="max-width:160px;padding:6px 10px;font-size:12px" onchange="sheetTimeFilter=this.value;renderSheet()">
+        <option value="current_month">This month</option>
+        <option value="last_month">Last month</option>
+        <option value="next_month">Next month</option>
+        <option value="this_year">This year</option>
+        <option value="all">All time</option>
+      </select>
+    </div>
+    <div id="sheet-body"></div>
   </div>
 
   <!-- PRODUCTION -->
@@ -809,7 +833,7 @@ function goToday(ctx){
   if(ctx==='o')renderOrders();else if(ctx==='p')renderProd();else if(ctx==='t')renderTasks();else if(ctx==='fb')renderFeedback();else renderRem();
 }
 
-var pageTitles={orders:'Orders',prod:'Production',tasks:'Tasks',rem:'Send Reminders',feedback:'Feedback',recurring:'Recurring Orders',admin:'Admin',new:'New Order'};
+var pageTitles={orders:'Orders',prod:'Production',tasks:'Tasks',rem:'Send Reminders',feedback:'Feedback',recurring:'Recurring Orders',admin:'Admin',new:'New Order',sheet:'All Orders'};
 function showPage(p){
   document.querySelectorAll('.page').forEach(function(el){el.classList.remove('on');});
   document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('on');});
@@ -890,17 +914,72 @@ function renderOrders(){
   }
 
   if(filt==='custom'){
-    var customs=ORDERS.filter(function(o){return o.customDate;});
-    var html='<div style="font-size:13px;font-weight:600;color:var(--purple);margin-bottom:10px">Custom date orders — tap to allocate</div>';
-    html+='<div class="cards">'+customs.map(renderCard).join('')+'</div>';
-    document.getElementById('orders-body').innerHTML=html||'<div style="padding:32px;text-align:center;color:var(--text-3);font-size:13px">No custom date orders</div>';
+    var weekIsos=weekDates(oW).map(isoDate);
+    var nameQ=(document.getElementById('order-search')||{}).value||'';
+    var nameFilter=nameQ.toLowerCase().trim();
+    // Unallocated: customDate=true AND no date
+    var unalloc=ORDERS.filter(function(o){
+      return o.customDate&&!o.date&&(!nameFilter||o.name.toLowerCase().indexOf(nameFilter)>=0);
+    });
+    // Allocated this week: customDate=true AND date falls in current week
+    var allocThisWeek=ORDERS.filter(function(o){
+      return o.customDate&&o.date&&weekIsos.indexOf(o.date)>=0&&(!nameFilter||o.name.toLowerCase().indexOf(nameFilter)>=0);
+    });
+    var html='';
+    if(unalloc.length){
+      html+='<div style="font-size:12px;font-weight:700;color:var(--purple);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Pending date assignment ('+unalloc.length+')</div>';
+      html+='<div class="cards" style="margin-bottom:20px">'+unalloc.map(renderCard).join('')+'</div>';
+    }
+    if(allocThisWeek.length){
+      html+='<div style="font-size:12px;font-weight:700;color:var(--purple);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Allocated this week ('+allocThisWeek.length+')</div>';
+      html+='<div class="cards">'+allocThisWeek.map(renderCard).join('')+'</div>';
+    }
+    if(!html)html='<div style="padding:32px;text-align:center;color:var(--text-3);font-size:13px">No custom date orders this week</div>';
+    document.getElementById('orders-body').innerHTML=html;
+    return;
+  }
+  if(filt==='dismissed'){
+    var nameQ2=(document.getElementById('order-search')||{}).value||'';
+    var nameFilter2=nameQ2.toLowerCase().trim();
+    var weekDates2=weekDates(oW);
+    var dismissed=RECURRING.filter(function(r){
+      if(!r.active)return false;
+      var targetDay=weekDates2.find(function(d){return d.getDay()===r.dayOfWeek;});
+      if(!targetDay)return false;
+      var dateKey=isoDate(targetDay);
+      var isDismissed=r.activatedDates&&r.activatedDates.indexOf(dateKey)>=0;
+      var hasOrder=ORDERS.find(function(o){return o.recurring&&o.wix.indexOf('#REC'+r.id+'_')===0&&o.date===dateKey;});
+      return isDismissed&&!hasOrder&&(!nameFilter2||r.name.toLowerCase().indexOf(nameFilter2)>=0);
+    });
+    var html2='<div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Dismissed this week ('+dismissed.length+')</div>';
+    if(dismissed.length){
+      html2+='<div class="cards">';
+      dismissed.forEach(function(r){
+        var targetDay=weekDates2.find(function(d){return d.getDay()===r.dayOfWeek;});
+        var dateKey=isoDate(targetDay);
+        html2+='<div class="card recurring-card">';
+        html2+='<div class="card-name">'+esc(r.name)+'</div>';
+        html2+='<div class="card-wix">Recurring · every '+dayNames[r.dayOfWeek]+'</div>';
+        html2+='<div class="card-tags"><span class="tag t-recurring">recurring</span></div>';
+        html2+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
+        html2+='<button class="btn accent" style="font-size:11px;padding:5px 12px" onclick="undoDismiss('+r.id+',''+dateKey+'')">Undo dismiss</button>';
+        html2+='</div></div>';
+      });
+      html2+='</div>';
+    } else {
+      html2='<div style="padding:32px;text-align:center;color:var(--text-3);font-size:13px">No dismissed orders this week</div>';
+    }
+    document.getElementById('orders-body').innerHTML=html2;
     return;
   }
   var html='';
   days.forEach(function(day){
     var iso=isoDate(day);
     var all=ORDERS.filter(function(o){return o.date===iso;});
+    var nameQ3=(document.getElementById('order-search')||{}).value||'';
+    var nameFilter3=nameQ3.toLowerCase().trim();
     var shown=all.filter(function(o){
+      if(nameFilter3&&o.name.toLowerCase().indexOf(nameFilter3)<0)return false;
       if(filt==='delivery')return o.type==='delivery';
       if(filt==='pickup')return o.type==='pickup';
       if(filt==='unfulfilled')return o.fulfillment==='unfulfilled';
@@ -1198,6 +1277,69 @@ function sendNextInBatch(){
   }
 }
 
+function undoDismiss(id, dateKey){
+  var r=RECURRING.find(function(x){return String(x.id)===String(id);});
+  if(!r)return;
+  r.activatedDates=(r.activatedDates||[]).filter(function(d){return d!==dateKey;});
+  apiSaveRecurring();
+  setFilter(document.querySelector('.fbtn[data-f="all"]'));
+  renderOrders();
+}
+
+var sheetTimeFilter='current_month';
+var sheetNameFilter='';
+
+function showSheet(){
+  showPage('sheet');
+  renderSheet();
+}
+
+function renderSheet(){
+  var nameQ=(sheetNameFilter||'').toLowerCase().trim();
+  var now=new Date();
+  var filtered=ORDERS.filter(function(o){
+    if(nameQ&&o.name.toLowerCase().indexOf(nameQ)<0)return false;
+    if(!o.date)return sheetTimeFilter==='all';
+    var d=new Date(o.date+'T12:00');
+    var y=d.getFullYear(),m=d.getMonth();
+    var ny=now.getFullYear(),nm=now.getMonth();
+    if(sheetTimeFilter==='current_month')return y===ny&&m===nm;
+    if(sheetTimeFilter==='last_month'){var lm=nm===0?11:nm-1,ly=nm===0?ny-1:ny;return y===ly&&m===lm;}
+    if(sheetTimeFilter==='next_month'){var xm=(nm+1)%12,xy=nm===11?ny+1:ny;return y===xy&&m===xm;}
+    if(sheetTimeFilter==='this_year')return y===ny;
+    if(sheetTimeFilter==='all')return true;
+    return true;
+  }).sort(function(a,b){return (a.date||'') < (b.date||'')?1:-1;}).slice(0,100);
+
+  var label=document.getElementById('sheet-name-filter');
+  if(label)label.value=sheetNameFilter;
+
+  var html='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">';
+  html+='<thead><tr style="background:var(--bg);border-bottom:2px solid var(--border)">';
+  ['Name','Wix #','Date','Shift','Type','Items','Fulfillment','Delivery','Total'].forEach(function(h){
+    html+='<th style="padding:8px 10px;text-align:left;font-weight:600;color:var(--text-2);white-space:nowrap">'+h+'</th>';
+  });
+  html+='</tr></thead><tbody>';
+  filtered.forEach(function(o,i){
+    var bg=i%2===0?'':'background:var(--bg)';
+    html+='<tr style="border-bottom:1px solid var(--border);cursor:pointer;'+bg+'" onclick="openModal('+o.id+')">';
+    html+='<td style="padding:7px 10px;font-weight:600">'+esc(o.name)+'</td>';
+    html+='<td style="padding:7px 10px;color:var(--text-2);font-family:monospace">'+esc(o.wix)+'</td>';
+    html+='<td style="padding:7px 10px;white-space:nowrap">'+(o.date?fmtS(new Date(o.date+'T12:00')):'—')+'</td>';
+    html+='<td style="padding:7px 10px">'+esc(o.shift||'—')+'</td>';
+    html+='<td style="padding:7px 10px">'+esc(o.type||'—')+'</td>';
+    html+='<td style="padding:7px 10px;max-width:200px">'+o.items.map(function(x){return esc(x.p)+' ×'+x.q;}).join(', ')+'</td>';
+    html+='<td style="padding:7px 10px"><span class="tag '+(o.fulfillment==='fulfilled'?'t-ful':'t-unf')+'">'+esc(o.fulfillment)+'</span></td>';
+    html+='<td style="padding:7px 10px"><span class="tag '+(o.delivery==='delivered'?'t-del':'t-pend')+'">'+esc(o.delivery)+'</span></td>';
+    html+='<td style="padding:7px 10px">'+(o.total?'$'+o.total:'—')+'</td>';
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+  if(!filtered.length)html='<div style="padding:32px;text-align:center;color:var(--text-3);font-size:13px">No orders found</div>';
+  html+='<div style="font-size:11px;color:var(--text-3);margin-top:8px;text-align:right">Showing '+filtered.length+' of '+ORDERS.length+' orders</div>';
+  document.getElementById('sheet-body').innerHTML=html;
+}
+
 function renderFeedback(){
   document.getElementById('fb-wlabel').textContent=fmtWeek(fbW);
   var days=weekDates(fbW);var isos=days.map(isoDate);
@@ -1258,6 +1400,9 @@ function activateRecurring(id){
   // Track activated dates per recurring order
   if(!r.activatedDates)r.activatedDates=[];
   if(r.activatedDates.indexOf(dateKey)<0)r.activatedDates.push(dateKey);
+  // Trim old dates — keep only last 8 weeks
+  var cutoff=new Date();cutoff.setDate(cutoff.getDate()-56);
+  r.activatedDates=r.activatedDates.filter(function(d){return new Date(d)>=cutoff;});
   // Check if order already exists in Sheet for this date
   var exists=ORDERS.find(function(o){return o.recurring&&o.wix.indexOf('#REC'+id+'_')===0&&o.date===dateKey;});
   if(!exists){
