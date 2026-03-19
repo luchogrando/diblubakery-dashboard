@@ -387,8 +387,8 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
     </div>
     <div class="defbox">
       <div class="deflabel">Default reminder message</div>
-      <textarea id="def-msg" class="msginp" rows="3" onblur="apiSaveSettings()">Hi {name}! Just a reminder from Di Blu Bakery :) Your order {order} will be {type} on {date} in the {shift}. Can't wait for you to enjoy it!</textarea>
-      <div style="font-size:11px;color:var(--text-3);margin-top:5px">Variables: {name} {order} {date} {shift} {type} {items} &nbsp;·&nbsp; <a href="#" onclick="apiSaveSettings();return false;" style="color:var(--accent);font-weight:600">Save template</a></div>
+      <textarea id="def-msg" class="msginp" rows="3">Hi {name}! Just a reminder from Di Blu Bakery :) Your order {order} will be {type} on {date} in the {shift}. Can't wait for you to enjoy it!</textarea>
+      <div style="font-size:11px;color:var(--text-3);margin-top:5px">Variables: {name} {order} {date} {shift} {type} {items} &nbsp;·&nbsp; <a href="#" onclick="apiSaveSettings('reminder_msg','flash-rem');return false;" style="color:var(--accent);font-weight:600">Save template</a> <span id="flash-rem" style="display:none;color:var(--green);font-weight:600">&#10003; Saved!</span></div>
     </div>
     <div class="bulkbar">
       <span style="font-size:12px;font-weight:500;color:var(--text-2)"><span id="rem-n">0</span> selected</span>
@@ -411,8 +411,8 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
     </div>
     <div class="defbox">
       <div class="deflabel">Feedback message template</div>
-      <textarea id="fb-msg" class="msginp" rows="2" onblur="apiSaveSettings()">Hi {name}! Hope you loved your Di Blu order We'd love to hear how everything was!</textarea>
-      <div style="font-size:11px;color:var(--text-3);margin-top:5px">Variables: {name} {order} {items} &nbsp;·&nbsp; <a href="#" onclick="apiSaveSettings();return false;" style="color:var(--accent);font-weight:600">Save template</a></div>
+      <textarea id="fb-msg" class="msginp" rows="2">Hi {name}! Hope you loved your Di Blu order We'd love to hear how everything was!</textarea>
+      <div style="font-size:11px;color:var(--text-3);margin-top:5px">Variables: {name} {order} {items} &nbsp;·&nbsp; <a href="#" onclick="apiSaveSettings('feedback_msg','flash-fb');return false;" style="color:var(--accent);font-weight:600">Save template</a> <span id="flash-fb" style="display:none;color:var(--green);font-weight:600">&#10003; Saved!</span></div>
     </div>
     <div class="bulkbar">
       <span style="font-size:12px;font-weight:500;color:var(--text-2)"><span id="fb-n">0</span> selected</span>
@@ -559,14 +559,27 @@ async function apiLoadConfig(){
   }
 }
 
-async function apiSaveSettings(){
+async function apiSaveSettings(key, flashId){
   try {
-    var remMsg=document.getElementById('def-msg');
-    var fbMsg=document.getElementById('fb-msg');
     var settings={};
-    if(remMsg)settings.reminder_msg=remMsg.value;
-    if(fbMsg)settings.feedback_msg=fbMsg.value;
+    if(key==='reminder_msg'){
+      var el=document.getElementById('def-msg');
+      if(el)settings.reminder_msg=el.value;
+    } else if(key==='feedback_msg'){
+      var el=document.getElementById('fb-msg');
+      if(el)settings.feedback_msg=el.value;
+    } else {
+      // save both if no key specified
+      var remEl=document.getElementById('def-msg');
+      var fbEl=document.getElementById('fb-msg');
+      if(remEl)settings.reminder_msg=remEl.value;
+      if(fbEl)settings.feedback_msg=fbEl.value;
+    }
     await apiFetch('/api/config',{method:'POST',body:JSON.stringify({settings:settings})});
+    if(flashId){
+      var f=document.getElementById(flashId);
+      if(f){f.style.display='inline';setTimeout(function(){f.style.display='none';},2500);}
+    }
   } catch(e){ console.warn('Could not save settings:',e.message); }
 }
 async function apiSaveConfig(){
