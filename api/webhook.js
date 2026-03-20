@@ -136,8 +136,18 @@ function parseWixOrder(payload) {
     }
   }
 
-  // Notes + delivery address
-  let notes = wix.buyerNote || '';
+  // Notes — recolectamos todos los campos posibles de Wix que pueden contener notas
+  const noteFields = [
+    wix.buyerNote,
+    wix.internalNote,
+    wix.buyerInfo?.buyerNote,
+    wix.giftMessage,
+    wix.note,
+    wix.customFields?.map(f => `${f.title}: ${f.value}`).join(' | '),
+    wix.channelInfo?.externalOrderNotes,
+  ].filter(Boolean).map(s => String(s).trim()).filter(s => s.length > 0);
+
+  let notes = [...new Set(noteFields)].join(' | ');
   if (type === 'delivery') {
     const dest = shippingInfo.logistics?.shippingDestination?.address;
     if (dest) {
