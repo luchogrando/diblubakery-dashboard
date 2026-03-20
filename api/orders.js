@@ -63,9 +63,11 @@ async function handleWixImport(req, res) {
     return res.status(500).json({ error: 'WIX_API_KEY o WIX_SITE_ID no configurados' });
   }
 
-  // ── MODO CHECK: consulta órdenes específicas por número ──────
+  // ── MODO CHECK: consulta e importa órdenes específicas por número ──────
   if (req.query.check) {
     const numbers = req.query.check.split(',').map(n => n.trim());
+    const existing = await readOrders();
+    const existingWixIds = new Set(existing.map(o => o.wix));
     const results = [];
     for (const num of numbers) {
       try {
@@ -79,20 +81,22 @@ async function handleWixImport(req, res) {
           body: JSON.stringify({ filter: { number: { $eq: parseInt(num) } } }),
         });
         const data = await response.json();
-        const order = (data.orders || [])[0];
-        if (order) {
-          results.push({
-            number: num,
-            fulfillmentStatus: order.fulfillmentStatus,
-            archived: order.archived,
-            createdDate: order.createdDate,
-            rawStatus: order.status,
-          });
+        const wixOrder = (data.orders || [])[0];
+        if (wixOrder) {
+          const order = parseWixOrder(wixOrder);
+          order.fulfillment = 'unfulfilled'; // forzamos unfulfilled independientemente de lo que diga Wix
+          if (existingWixIds.has(order.wix)) {
+            results.push({ number: num, status: 'skipped', reason: 'ya existe en Sheet' });
+          } else {
+            await appendOrder(order);
+            existingWixIds.add(order.wix);
+            results.push({ number: num, name: order.name, status: 'imported', wixStatus: wixOrder.fulfillmentStatus });
+          }
         } else {
-          results.push({ number: num, error: 'No encontrada' });
+          results.push({ number: num, status: 'error', reason: 'No encontrada en Wix' });
         }
       } catch (err) {
-        results.push({ number: num, error: err.message });
+        results.push({ number: num, status: 'error', reason: err.message });
       }
     }
     return res.status(200).json({ ok: true, results });
