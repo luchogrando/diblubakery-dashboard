@@ -101,7 +101,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .card-edit-flag{font-size:10px;color:#7a5c00;background:#fff0c0;padding:2px 6px;border-radius:4px;margin-top:6px;display:inline-block;}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;padding:16px;}
 .overlay.on{display:flex;}
-.mbox{background:var(--surface);border-radius:14px;padding:22px;width:100%;max-width:380px;max-height:90vh;overflow-y:auto;}
+.mbox{background:var(--surface);border-radius:14px;padding:22px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;}
 .mtitle{font-size:15px;font-weight:700;display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:8px;}
 .xbtn{background:none;border:none;font-size:24px;cursor:pointer;color:var(--text-3);line-height:1;flex-shrink:0;}
 .xbtn:hover{color:var(--text);}
@@ -834,6 +834,15 @@ function switchRole(r){
 
 // BASE_PRODUCTS and PRODS loaded from Sheet on login via apiLoadConfig()
 var BASE_PRODUCTS = {};
+var editingBase = {};
+
+function toTitleCase(str){
+  return str.replace(/\w\S*/g,function(w){return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase();});
+}
+function nextBaseId(){
+  var nums=Object.keys(BASE_PRODUCTS).map(function(k){return parseInt(k);}).filter(function(n){return !isNaN(n);});
+  return nums.length?String(Math.max.apply(null,nums)+1):'1';
+}
 var PRODS = {};
 var UL = {};
 
@@ -1700,7 +1709,6 @@ function renderAdmin(){
 }
 
 // ── SECTION 1: BASE PRODUCTS ──────────────────────────────────
-var editingBase = {};
 function renderAdminBase(){
   var html='<div class="admin-section">';
   html+='<div class="admin-title">Base products <span class="admin-subtitle">The individual units you actually bake</span><button class="btn accent" onclick="openNewBaseModal()">+ add base product</button></div>';
@@ -1731,7 +1739,7 @@ function cancelBaseEdit(key){delete editingBase[key];renderAdminBase();}
 function saveBaseProduct(key){
   var inp=document.getElementById('bp-'+key);
   if(!inp)return;
-  var val=inp.value.trim();
+  var val=toTitleCase(inp.value.trim());
   if(!val)return;
   BASE_PRODUCTS[key].name=val;
   UL[key]=val;
@@ -1751,10 +1759,10 @@ function openNewBaseModal(){
 function saveNewBase(){
   var name=document.getElementById('nbp-name').value.trim();
   if(!name)return alert('Enter a product name');
-  var key=name.toLowerCase().replace(/[^a-z0-9]/g,'_');
-  if(BASE_PRODUCTS[key])return alert('A base product with this name already exists');
-  BASE_PRODUCTS[key]={name:name};
-  UL[key]=name;
+  var titleName=toTitleCase(name);
+  var key=nextBaseId();
+  BASE_PRODUCTS[key]={name:titleName};
+  UL[key]=titleName;
   closeModal();renderAdminBase();apiSaveConfig();
 }
 function deleteBaseProduct(key){
@@ -1886,22 +1894,19 @@ function buildUnitsHtml(name,sid){
 }
 function addPresUnit(name,sid){
   if(!PRODS[name])return;
-  // pick first base product not already used, or just first
-  var used=Object.keys(PRODS[name].u||{});
-  var firstUnused=Object.keys(BASE_PRODUCTS).find(function(k){return used.indexOf(k)<0;})||Object.keys(BASE_PRODUCTS)[0]||'';
-  if(!firstUnused)return alert('No base products available. Add some in the Base products tab first.');
-  PRODS[name].u[firstUnused]=(PRODS[name].u[firstUnused]||0)+1;
-  // update only the units div — no full re-render, no scroll jump
+  if(!Object.keys(BASE_PRODUCTS).length)return alert('No base products available. Add some in the Base products tab first.');
+  // Add an empty row to the DOM only — no PRODS change until Save
   var unitsEl=document.getElementById('units-'+sid);
-  if(unitsEl){
-    unitsEl.innerHTML=buildUnitsHtml(name,sid);
-    var body=document.getElementById('body-'+sid);
-    if(body){body.className='combo-body open';var arr=document.getElementById('arr-'+sid);if(arr)arr.className='combo-arrow open';}
-  } else {
-    renderAdminPres();
-    var body=document.getElementById('body-'+sid);
-    if(body){body.className='combo-body open';var arr=document.getElementById('arr-'+sid);if(arr)arr.className='combo-arrow open';}
-  }
+  if(!unitsEl)return;
+  var bpOptions='<option value="">-- select --</option>'+Object.keys(BASE_PRODUCTS).map(function(bk){return '<option value="'+bk+'">'+esc(BASE_PRODUCTS[bk].name)+'</option>';}).join('');
+  var row=document.createElement('div');
+  row.className='unit-row';
+  row.innerHTML='<select style="flex:1;padding:5px 9px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;font-family:inherit">'+bpOptions+'</select>'
+    +'<input type="number" min="0" value="1" style="width:60px;padding:5px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;text-align:center">'
+    +'<button class="task-btn" style="color:var(--red)" onclick="this.parentNode.remove()">×</button>';
+  unitsEl.appendChild(row);
+  var body=document.getElementById('body-'+sid);
+  if(body){body.className='combo-body open';var arr=document.getElementById('arr-'+sid);if(arr)arr.className='combo-arrow open';}
 }
 function updateComboUnit(name,oldKey,newKey,sid){
   // Only update DOM — PRODS is updated on Save to avoid auto-saving on dropdown change
