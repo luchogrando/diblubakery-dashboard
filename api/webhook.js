@@ -17,7 +17,6 @@ module.exports = async function handler(req, res) {
 
   try {
     const body = req.body;
-    console.log('WIX PAYLOAD:', JSON.stringify(body, null, 2));
 
     const wix = body.data || body;
     const eventType = body.type || body.eventType || wix.type || '';
