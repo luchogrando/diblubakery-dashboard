@@ -332,7 +332,7 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
   <div class="page on" id="page-orders">
     <div class="order-tabs">
       <button class="order-tab on" id="otab-calendar" onclick="switchOrderTab('calendar')">Calendar</button>
-      <button class="order-tab" id="otab-sheet" onclick="switchOrderTab('sheet')">All orders</button>
+      <button class="order-tab" id="otab-sheet" onclick="switchOrderTab('sheet')">Orders List</button>
     </div>
 
     <!-- CALENDAR VIEW -->
@@ -370,7 +370,7 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
 
     <!-- SHEET VIEW -->
     <div id="oview-sheet" style="display:none">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
       <input type="text" id="sheet-name-filter" class="finput" placeholder="Search by name..." oninput="sheetNameFilter=this.value;renderSheet()" style="max-width:220px;padding:6px 10px;font-size:12px">
       <select class="finput" style="max-width:160px;padding:6px 10px;font-size:12px" onchange="sheetTimeFilter=this.value;renderSheet()">
         <option value="current_month">This month</option>
@@ -379,6 +379,15 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
         <option value="this_year">This year</option>
         <option value="all">All time</option>
       </select>
+    </div>
+    <div class="filters" style="margin-bottom:12px">
+      <button class="fbtn on" data-sf="all" onclick="setSheetFilter(this)">All</button>
+      <button class="fbtn" data-sf="delivery" onclick="setSheetFilter(this)">Delivery</button>
+      <button class="fbtn" data-sf="pickup" onclick="setSheetFilter(this)">Pick up</button>
+      <button class="fbtn" data-sf="unfulfilled" onclick="setSheetFilter(this)">Unfulfilled</button>
+      <button class="fbtn" data-sf="fulfilled" onclick="setSheetFilter(this)">Fulfilled</button>
+      <button class="fbtn" data-sf="pending" onclick="setSheetFilter(this)">Pending</button>
+      <button class="fbtn" data-sf="delivered" onclick="setSheetFilter(this)">Delivered</button>
     </div>
     <div id="sheet-body"></div>
     </div>
@@ -392,6 +401,11 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
       <span class="wlabel" id="p-wlabel"></span>
       <button class="wbtn" onclick="changeWeek('p',1)">→</button>
       <button class="wbtn today-btn" onclick="goToday('p')">This week</button>
+      <select id="prod-shift-filter" onchange="renderProd()" style="margin-left:10px;padding:5px 10px;border:1px solid var(--border-dark);border-radius:7px;font-size:12px;font-family:inherit;background:var(--bg);color:var(--text-1);cursor:pointer">
+        <option value="all">All shifts</option>
+        <option value="morning">Morning</option>
+        <option value="afternoon">Afternoon</option>
+      </select>
     </div>
     <div class="stitle">Presentations to pack</div>
     <div class="twrap"><table class="stable" id="pres-t"></table></div>
@@ -865,7 +879,7 @@ function goToday(ctx){
   if(ctx==='o')renderOrders();else if(ctx==='p')renderProd();else if(ctx==='t')renderTasks();else if(ctx==='fb')renderFeedback();else renderRem();
 }
 
-var pageTitles={orders:'Orders',prod:'Production',tasks:'Tasks',rem:'Send Reminders',feedback:'Feedback',recurring:'Recurring Orders',admin:'Admin',new:'New Order',sheet:'All Orders'};
+var pageTitles={orders:'Orders',prod:'Production',tasks:'Tasks',rem:'Send Reminders',feedback:'Feedback',recurring:'Recurring Orders',admin:'Admin',new:'New Order',sheet:'Orders List'};
 function showPage(p){
   document.querySelectorAll('.page').forEach(function(el){el.classList.remove('on');});
   document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('on');});
@@ -1225,7 +1239,12 @@ function sendWA(id){var o=ORDERS.find(function(x){return String(x.id)===String(i
 function renderProd(){
   document.getElementById('p-wlabel').textContent=fmtWeek(pW);
   var days=weekDates(pW);var isos=days.map(isoDate);
-  var weekOrders=ORDERS.filter(function(o){return o.date&&isos.indexOf(o.date)>=0;});
+  var shiftSel=(document.getElementById('prod-shift-filter')||{}).value||'all';
+  var weekOrders=ORDERS.filter(function(o){
+    if(!o.date||isos.indexOf(o.date)<0)return false;
+    if(shiftSel!=='all'&&o.shift!==shiftSel)return false;
+    return true;
+  });
   var presMap={},unitMap={},unitBD={};
   isos.forEach(function(d){presMap[d]={};unitMap[d]={};unitBD[d]={};});
   weekOrders.forEach(function(o){
@@ -1412,6 +1431,7 @@ function undoDismiss(id, dateKey){
 
 var sheetTimeFilter='current_month';
 var sheetNameFilter='';
+var sheetTypeFilter='all';
 var sheetSortCol='date';
 var sheetSortDir=-1; // -1=desc, 1=asc
 
@@ -1434,11 +1454,23 @@ function sheetSort(col){
   renderSheet();
 }
 
+function setSheetFilter(btn){
+  sheetTypeFilter=btn.getAttribute('data-sf');
+  document.querySelectorAll('[data-sf]').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  renderSheet();
+}
 function renderSheet(){
   var nameQ=(sheetNameFilter||'').toLowerCase().trim();
   var now=new Date();
   var filtered=ORDERS.filter(function(o){
     if(nameQ&&o.name.toLowerCase().indexOf(nameQ)<0)return false;
+    if(sheetTypeFilter==='delivery'&&o.type!=='delivery')return false;
+    if(sheetTypeFilter==='pickup'&&o.type!=='pickup')return false;
+    if(sheetTypeFilter==='unfulfilled'&&o.fulfillment!=='unfulfilled')return false;
+    if(sheetTypeFilter==='fulfilled'&&o.fulfillment!=='fulfilled')return false;
+    if(sheetTypeFilter==='pending'&&o.delivery!=='pending')return false;
+    if(sheetTypeFilter==='delivered'&&o.delivery!=='delivered')return false;
     if(!o.date)return sheetTimeFilter==='all';
     var d=new Date(o.date+'T12:00');
     var y=d.getFullYear(),m=d.getMonth();
@@ -1478,7 +1510,7 @@ function renderSheet(){
   ];
   var sortable=['name','wix','date','fulfillment','delivery','total'];
 
-  var html='<div class="sheet-table-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px">';
+  var html='<div class="sheet-table-wrap"><table style="width:100%;min-width:900px;border-collapse:collapse;font-size:12px">';
   html+='<thead><tr style="border-bottom:2px solid var(--border)">';
   cols.forEach(function(c){
     var canSort=sortable.indexOf(c.key)>=0;
@@ -1496,7 +1528,7 @@ function renderSheet(){
     html+='<td style="padding:7px 10px;white-space:nowrap">'+(o.date?fmtS(new Date(o.date+'T12:00')):'—')+'</td>';
     html+='<td style="padding:7px 10px">'+esc(o.shift||'—')+'</td>';
     html+='<td style="padding:7px 10px">'+esc(o.type||'—')+'</td>';
-    html+='<td style="padding:7px 10px;max-width:180px;font-size:11px">'+o.items.map(function(x){return esc(x.p)+' ×'+x.q;}).join(', ')+'</td>';
+    html+='<td style="padding:7px 10px;white-space:nowrap;font-size:11px">'+o.items.map(function(x){return esc(x.p)+' ×'+x.q;}).join(', ')+'</td>';
     html+='<td style="padding:7px 10px"><span class="tag '+(o.fulfillment==='fulfilled'?'t-ful':'t-unf')+'">'+esc(o.fulfillment)+'</span></td>';
     html+='<td style="padding:7px 10px"><span class="tag '+(o.delivery==='delivered'?'t-del':'t-pend')+'">'+esc(o.delivery)+'</span></td>';
     html+='<td style="padding:7px 10px">'+(o.total?'$'+o.total:'—')+'</td>';
