@@ -104,6 +104,10 @@ async function handleWixImport(req, res) {
       console.log(`Página ${page}: ${orders.length} órdenes traídas (total: ${allWixOrders.length})`);
     } while (cursor && allWixOrders.length < 2000); // límite de seguridad
 
+    // Log de todos los status únicos que llegaron
+    const allStatuses = [...new Set(allWixOrders.map(o => o.fulfillmentStatus))];
+    console.log('STATUSES EN WIX:', JSON.stringify(allStatuses));
+
     // Doble chequeo: filtrar del lado del servidor por si Wix no aplicó bien el filtro
     allWixOrders = allWixOrders.filter(o =>
       o.fulfillmentStatus === 'NOT_FULFILLED' && !o.archived
