@@ -1815,16 +1815,15 @@ function openNewPresModal(){
   h+='<div class="msec">What goes into this (base products)</div>';
   h+='<div id="np-units"></div>';
   h+='<button class="add-btn" onclick="addNewPresUnit()" style="margin:8px 0 16px">+ add ingredient</button>';
-  // auto-add first row after modal renders
-  h+='<script>setTimeout(addNewPresUnit,50)<'+'/script>';
   h+='<div class="mactions"><button class="btn accent" onclick="saveNewPres()" style="padding:10px;font-size:13px">Save</button></div>';
   document.getElementById('mbox').innerHTML=h;
   document.getElementById('overlay').className='overlay on';
+  addNewPresUnit();
 }
 function addNewPresUnit(){
   var bpOptions=Object.keys(BASE_PRODUCTS).map(function(k){return '<option value="'+k+'">'+esc(BASE_PRODUCTS[k].name)+'</option>';}).join('');
   var c=document.getElementById('np-units');var r=document.createElement('div');
-  r.className='unit-row';
+  r.className='np-row';
   r.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:6px';
   r.innerHTML='<select style="flex:1;padding:5px 9px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;font-family:inherit"><option value="">-- select --</option>'+bpOptions+'</select><input type="number" min="1" value="1" style="width:56px;padding:5px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;text-align:center"><button onclick="this.parentNode.remove()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-3)">&#x00D7;</button>';
   c.appendChild(r);
@@ -1834,7 +1833,7 @@ function saveNewPres(){
   if(!name)return alert('Enter a product name');
   if(PRODS[name])return alert('A presentation with this name already exists');
   var u={};
-  var rows=document.getElementById('np-units').querySelectorAll('.unit-row');
+  var rows=document.getElementById('np-units').querySelectorAll('.np-row');
   rows.forEach(function(row){
     var sel=row.querySelector('select');
     var inp=row.querySelector('input[type="number"]');
