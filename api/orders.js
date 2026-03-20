@@ -71,11 +71,16 @@ async function handleWixImport(req, res) {
 
     do {
       page++;
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const dateFilter = thirtyDaysAgo.toISOString();
+
       const body = {
         filter: {
           $and: [
             { fulfillmentStatus: { $eq: 'NOT_FULFILLED' } },
             { archived: { $eq: false } },
+            { createdDate: { $gte: dateFilter } },
           ]
         },
         cursorPaging: { limit: 100, ...(cursor ? { cursor } : {}) },
@@ -108,10 +113,15 @@ async function handleWixImport(req, res) {
     const allStatuses = [...new Set(allWixOrders.map(o => o.fulfillmentStatus))];
     console.log('STATUSES EN WIX:', JSON.stringify(allStatuses));
 
-    // Doble chequeo: filtrar del lado del servidor por si Wix no aplicó bien el filtro
-    allWixOrders = allWixOrders.filter(o =>
-      o.fulfillmentStatus === 'NOT_FULFILLED' && !o.archived
-    );
+    // Doble chequeo: filtrar del lado del servidor
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+    allWixOrders = allWixOrders.filter(o => {
+      if (o.fulfillmentStatus !== 'NOT_FULFILLED') return false;
+      if (o.archived) return false;
+      if (o.createdDate && new Date(o.createdDate) < cutoff) return false;
+      return true;
+    });
 
     console.log(`Total órdenes unfulfilled no archivadas: ${allWixOrders.length}`);
 
