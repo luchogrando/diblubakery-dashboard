@@ -64,7 +64,7 @@ async function handleWixImport(req, res) {
   }
 
   try {
-    // Traer todas las órdenes unfulfilled de Wix (paginado)
+    // Traer todas las órdenes unfulfilled y no archivadas de Wix (paginado)
     let allWixOrders = [];
     let cursor = null;
     let page = 0;
@@ -72,7 +72,12 @@ async function handleWixImport(req, res) {
     do {
       page++;
       const body = {
-        filter: { fulfillmentStatus: 'NOT_FULFILLED' },
+        filter: {
+          $and: [
+            { fulfillmentStatus: { $eq: 'NOT_FULFILLED' } },
+            { archived: { $eq: false } },
+          ]
+        },
         cursorPaging: { limit: 100, ...(cursor ? { cursor } : {}) },
       };
 
@@ -97,9 +102,14 @@ async function handleWixImport(req, res) {
       cursor = data.metadata?.cursors?.next || null;
 
       console.log(`Página ${page}: ${orders.length} órdenes traídas (total: ${allWixOrders.length})`);
-    } while (cursor && allWixOrders.length < 1000); // límite de seguridad
+    } while (cursor && allWixOrders.length < 2000); // límite de seguridad
 
-    console.log(`Total órdenes unfulfilled en Wix: ${allWixOrders.length}`);
+    // Doble chequeo: filtrar del lado del servidor por si Wix no aplicó bien el filtro
+    allWixOrders = allWixOrders.filter(o =>
+      o.fulfillmentStatus === 'NOT_FULFILLED' && !o.archived
+    );
+
+    console.log(`Total órdenes unfulfilled no archivadas: ${allWixOrders.length}`);
 
     // Leer órdenes ya existentes en el Sheet para no duplicar
     const existing = await readOrders();
