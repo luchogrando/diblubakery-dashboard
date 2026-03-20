@@ -63,6 +63,42 @@ async function handleWixImport(req, res) {
     return res.status(500).json({ error: 'WIX_API_KEY o WIX_SITE_ID no configurados' });
   }
 
+  // ── MODO CHECK: consulta órdenes específicas por número ──────
+  if (req.query.check) {
+    const numbers = req.query.check.split(',').map(n => n.trim());
+    const results = [];
+    for (const num of numbers) {
+      try {
+        const response = await fetch('https://www.wixapis.com/ecom/v1/orders/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': WIX_API_KEY,
+            'wix-site-id': WIX_SITE_ID,
+          },
+          body: JSON.stringify({ filter: { number: { $eq: parseInt(num) } } }),
+        });
+        const data = await response.json();
+        const order = (data.orders || [])[0];
+        if (order) {
+          results.push({
+            number: num,
+            fulfillmentStatus: order.fulfillmentStatus,
+            archived: order.archived,
+            createdDate: order.createdDate,
+            rawStatus: order.status,
+          });
+        } else {
+          results.push({ number: num, error: 'No encontrada' });
+        }
+      } catch (err) {
+        results.push({ number: num, error: err.message });
+      }
+    }
+    return res.status(200).json({ ok: true, results });
+  }
+  // ────────────────────────────────────────────────────────────
+
   try {
     // Traer todas las órdenes unfulfilled y no archivadas de Wix (paginado)
     let allWixOrders = [];
