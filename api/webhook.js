@@ -67,8 +67,10 @@ function parseWixOrder(payload) {
 
   // Contact
   const contact = wix.contact || {};
+  console.log('CONTACT:', JSON.stringify(contact));
+  console.log('BILLING:', JSON.stringify(wix.billingInfo?.contactDetails));
   const name = [contact.name?.first, contact.name?.last].filter(Boolean).join(' ')
-    || wix.billingInfo?.contactDetails?.firstName
+    || [wix.billingInfo?.contactDetails?.firstName, wix.billingInfo?.contactDetails?.lastName].filter(Boolean).join(' ')
     || wix.buyerEmail
     || 'Unknown';
   const phone = contact.phone
@@ -81,11 +83,12 @@ function parseWixOrder(payload) {
 
   // Line items
   const lineItems = wix.lineItems || [];
+  console.log('LINEITEMS SAMPLE:', JSON.stringify(lineItems[0] || {}));
   const items = lineItems.map(item => {
     const baseName = item.itemName || item.productName?.original || item.name || 'Unknown product';
     // Variantes: sabor, tamaño, etc.
     const variants = (item.descriptionLines || [])
-      .map(l => l.colorInfo?.original || l.plainText?.original || l.plainTextValue || '')
+      .map(l => l.colorInfo?.original || l.plainText?.original || l.plainTextValue || l.value || '')
       .filter(Boolean);
     const options = item.options
       ? Object.values(item.options).filter(Boolean)
