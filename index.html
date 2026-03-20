@@ -714,7 +714,7 @@ async function apiLoadOrders(){
   var prevUnconf = getUnconfigured().length;
   try {
     var data = await apiFetch('/api/orders');
-    if(data.orders && data.orders.length) ORDERS = data.orders;
+    if(data.orders) ORDERS = data.orders;
     // auto-add any product names from orders that aren't in PRODS yet
     ORDERS.forEach(function(o){
       (o.items||[]).forEach(function(it){
@@ -1123,8 +1123,8 @@ function saveDateTime(id){
   var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;
   var dv=document.getElementById('ed-'+id),sv=document.getElementById('es-'+id);
   if(dv&&dv.value){
-    o.date=dv.value;o.shift=sv.value;o.edited=true;o.editedBy=currentUser;
-    apiUpdateOrder(id,{date:o.date,shift:o.shift,edited:true,editedBy:currentUser});
+    o.date=dv.value;o.shift=sv.value;o.customDate=false;o.edited=true;o.editedBy=currentUser;
+    apiUpdateOrder(id,{date:o.date,shift:o.shift,customDate:false,edited:true,editedBy:currentUser});
   }
   openModal(id);renderOrders();
 }
@@ -1185,7 +1185,7 @@ function openEditOrderModal(id){
   h+='<div style="margin-bottom:10px"><div class="flabel">Items</div><div id="eo-items">';
   o.items.forEach(function(it,i){
     h+='<div class="product-row" id="eorow-'+i+'">';
-    h+='<select>'+Object.keys(BASE_PRODUCTS).map(function(p){return '<option value="'+esc(p)+'"'+(it.p===p?' selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select>';
+    h+='<select>'+Object.keys(PRODS).map(function(p){return '<option value="'+esc(p)+'"'+(it.p===p?' selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select>';
     h+='<input type="number" min="1" value="'+it.q+'">';
     h+='<button onclick="this.parentNode.remove()">&#x00D7;</button>';
     h+='</div>';
@@ -1198,7 +1198,7 @@ function openEditOrderModal(id){
 
 function addEoRow(){
   var c=document.getElementById('eo-items');var r=document.createElement('div');r.className='product-row';
-  r.innerHTML='<select>'+Object.keys(BASE_PRODUCTS).map(function(p){return '<option value="'+esc(p)+'">'+esc(p)+'</option>';}).join('')+'</select><input type="number" min="1" value="1"><button onclick="this.parentNode.remove()">&#x00D7;</button>';
+  r.innerHTML='<select>'+Object.keys(PRODS).map(function(p){return '<option value="'+esc(p)+'">'+esc(p)+'</option>';}).join('')+'</select><input type="number" min="1" value="1"><button onclick="this.parentNode.remove()">&#x00D7;</button>';
   c.appendChild(r);
 }
 
