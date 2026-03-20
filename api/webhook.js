@@ -81,10 +81,19 @@ function parseWixOrder(payload) {
 
   // Line items
   const lineItems = wix.lineItems || [];
-  const items = lineItems.map(item => ({
-    p: item.itemName || item.productName?.original || item.name || 'Unknown product',
-    q: item.quantity || 1,
-  }));
+  const items = lineItems.map(item => {
+    const baseName = item.itemName || item.productName?.original || item.name || 'Unknown product';
+    // Variantes: sabor, tamaño, etc.
+    const variants = (item.descriptionLines || [])
+      .map(l => l.colorInfo?.original || l.plainText?.original || l.plainTextValue || '')
+      .filter(Boolean);
+    const options = item.options
+      ? Object.values(item.options).filter(Boolean)
+      : [];
+    const allVariants = [...new Set([...variants, ...options])];
+    const fullName = allVariants.length > 0 ? `${baseName} (${allVariants.join(', ')})` : baseName;
+    return { p: fullName, q: item.quantity || 1 };
+  });
 
   // Total
   const pricing = wix.priceSummary || {};
