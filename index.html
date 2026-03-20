@@ -478,9 +478,7 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
       </div>
       <button class="btn accent" onclick="openNewRecurring()">+ add recurring</button>
     </div>
-    <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--recurring)">📬 Suggestions for this week</div>
-    <div id="rec-suggestions"></div>
-    <div style="font-size:13px;font-weight:600;margin-bottom:10px;margin-top:20px">All recurring orders</div>
+    <div style="font-size:13px;font-weight:600;margin-bottom:10px">All recurring orders</div>
     <div id="rec-list"></div>
   </div>
 
@@ -1048,6 +1046,14 @@ function getOrderValue(o){
   return o.total || 0;
 }
 
+function resolveItemName(p){
+  // If it's a presentation key, use as-is (the name IS the key for PRODS)
+  if(PRODS[p])return p;
+  // If it's a base product key (numeric or string), resolve to name
+  if(BASE_PRODUCTS[p])return BASE_PRODUCTS[p].name;
+  return p;
+}
+
 function renderCard(o){
   var faded=(o.fulfillment==='fulfilled'&&o.delivery==='delivered');
   var val=getOrderValue(o);
@@ -1064,7 +1070,7 @@ function renderCard(o){
   if(o.recurring)h+='<span class="tag t-recurring">recurring</span>';
   if(o.customDate&&!o.date)h+='<span class="tag t-custom">custom date</span>';
   h+='</div>';
-  h+='<div class="card-items">'+o.items.map(function(i){return '<div class="card-item"><span>'+esc(i.p)+'</span><span>\u00d7'+i.q+'</span></div>';}).join('')+'</div>';
+  h+='<div class="card-items">'+o.items.map(function(i){return '<div class="card-item"><span>'+esc(resolveItemName(i.p))+'</span><span>\u00d7'+i.q+'</span></div>';}).join('')+'</div>';
   if(o.edited)h+='<div class="card-edit-flag">\u270f edited by '+esc(o.editedBy)+'</div>';
   h+='</div>';
   return h;
@@ -1087,7 +1093,7 @@ function openModal(id){
   if(o.notes)h+='<div class="mrow"><span class="ml">Notes</span><span class="mr" style="color:var(--text-2)">'+esc(o.notes)+'</span></div>';
   h+='<div class="mrow"><span class="ml">Phone</span><span class="mr" style="color:var(--blue)">'+esc(o.phone)+'</span></div>';
   h+='<div class="msec">Products ordered</div>';
-  o.items.forEach(function(it){h+='<div class="mrow"><span class="ml">'+esc(it.p)+'</span><span class="mr">\u00d7'+it.q+'</span></div>';});
+  o.items.forEach(function(it){h+='<div class="mrow"><span class="ml">'+esc(resolveItemName(it.p))+'</span><span class="mr">\u00d7'+it.q+'</span></div>';});
   h+='<div class="msec">Units to produce</div>';
   Object.keys(uT).forEach(function(u){h+='<div class="mrow"><span class="ml">'+(UL[u]||u)+'</span><span class="mr" style="font-weight:700">'+uT[u]+'</span></div>';});
   h+='<div class="mactions">';
@@ -1179,9 +1185,10 @@ function openEditOrderModal(id){
   h+='<div style="margin-bottom:10px"><div class="flabel">Type</div><select class="finput" id="eo-type"><option value="pickup"'+(o.type==='pickup'?' selected':'')+'>Pick up</option><option value="delivery"'+(o.type==='delivery'?' selected':'')+'>Delivery</option></select></div>';
   h+='<div style="margin-bottom:16px"><div class="flabel">Notes</div><input class="finput" type="text" id="eo-notes" value="'+esc(o.notes||'')+'"></div>';
   h+='<div style="margin-bottom:10px"><div class="flabel">Items</div><div id="eo-items">';
+  var sortedProdsEo=Object.keys(PRODS).sort(function(a,b){return a.toLowerCase()<b.toLowerCase()?-1:1;});
   o.items.forEach(function(it,i){
     h+='<div class="product-row" id="eorow-'+i+'">';
-    h+='<select>'+Object.keys(PRODS).map(function(p){return '<option value="'+esc(p)+'"'+(it.p===p?' selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select>';
+    h+='<select><option value="">-- select --</option>'+sortedProdsEo.map(function(p){return '<option value="'+esc(p)+'"'+(it.p===p?' selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select>';
     h+='<input type="number" min="1" value="'+it.q+'">';
     h+='<button onclick="this.parentNode.remove()">&#x00D7;</button>';
     h+='</div>';
@@ -1194,7 +1201,8 @@ function openEditOrderModal(id){
 
 function addEoRow(){
   var c=document.getElementById('eo-items');var r=document.createElement('div');r.className='product-row';
-  r.innerHTML='<select>'+Object.keys(PRODS).map(function(p){return '<option value="'+esc(p)+'">'+esc(p)+'</option>';}).join('')+'</select><input type="number" min="1" value="1"><button onclick="this.parentNode.remove()">&#x00D7;</button>';
+  var sp=Object.keys(PRODS).sort(function(a,b){return a.toLowerCase()<b.toLowerCase()?-1:1;});
+  r.innerHTML='<select><option value="">-- select --</option>'+sp.map(function(p){return '<option value="'+esc(p)+'">'+esc(p)+'</option>';}).join('')+'</select><input type="number" min="1" value="1"><button onclick="this.parentNode.remove()">&#x00D7;</button>';
   c.appendChild(r);
 }
 
@@ -1524,7 +1532,7 @@ function renderSheet(){
     html+='<td style="padding:7px 10px;white-space:nowrap">'+(o.date?fmtS(new Date(o.date+'T12:00')):'—')+'</td>';
     html+='<td style="padding:7px 10px">'+esc(o.shift||'—')+'</td>';
     html+='<td style="padding:7px 10px">'+esc(o.type||'—')+'</td>';
-    html+='<td style="padding:7px 10px;white-space:nowrap;font-size:11px">'+o.items.map(function(x){return esc(x.p)+' ×'+x.q;}).join(', ')+'</td>';
+    html+='<td style="padding:7px 10px;white-space:nowrap;font-size:11px">'+o.items.map(function(x){return esc(resolveItemName(x.p))+' ×'+x.q;}).join(', ')+'</td>';
     html+='<td style="padding:7px 10px"><span class="tag '+(o.fulfillment==='fulfilled'?'t-ful':'t-unf')+'">'+esc(o.fulfillment)+'</span></td>';
     html+='<td style="padding:7px 10px"><span class="tag '+(o.delivery==='delivered'?'t-del':'t-pend')+'">'+esc(o.delivery)+'</span></td>';
     html+='<td style="padding:7px 10px">'+(o.total?'$'+o.total:'—')+'</td>';
@@ -1567,18 +1575,6 @@ function sendFbSingle(id){var o=ORDERS.find(function(x){return String(x.id)===St
 
 
 function renderRecurring(){
-  var sugHtml='';
-  RECURRING.filter(function(r){
-    if(!r.active)return false;
-    var days=weekDates(rW);var targetDay=days.find(function(d){return d.getDay()===r.dayOfWeek;});
-    if(!targetDay)return false;
-    var dateKey=isoDate(targetDay);
-    return !r.activatedDates||r.activatedDates.indexOf(dateKey)<0;
-  }).forEach(function(r){
-    sugHtml+='<div class="rec-suggestion"><div class="rec-sug-text">'+esc(r.name)+' \u2014 every '+dayNames[r.dayOfWeek]+' '+r.shift+' ('+r.type+')<br><span style="font-size:10px;color:var(--text-2)">'+r.items.map(function(i){var dn=PRODS[i.p]?i.p:(BASE_PRODUCTS[i.p]?BASE_PRODUCTS[i.p].name:i.p);return dn+' \u00d7'+i.q;}).join(', ')+'</span></div><div class="sug-actions"><button class="sug-btn sug-activate" onclick="activateRecurring('+r.id+')">Activate this week</button><button class="sug-btn sug-dismiss" onclick="dismissRecurring('+r.id+')">Dismiss</button></div></div>';
-  });
-  if(!sugHtml)sugHtml='<div style="padding:12px 14px;font-size:12px;color:var(--text-3);font-style:italic;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:8px">No suggestions this week \u2014 all activated or dismissed.</div>';
-  document.getElementById('rec-suggestions').innerHTML=sugHtml;
   var listHtml='';
   RECURRING.forEach(function(r){
     listHtml+='<div class="rec-card"><div class="rec-card-hd"><div><div class="rec-name">'+esc(r.name)+'</div><div class="rec-meta">Every '+dayNames[r.dayOfWeek]+' \u00b7 '+r.shift+' \u00b7 '+r.type+'</div></div><span class="tag '+(r.active?'t-ful':'t-pend')+'" style="flex-shrink:0">'+(r.active?'active':'paused')+'</span></div>';
@@ -1649,12 +1645,20 @@ function openRecurringForm(id){
   h+='</div>';
   h+='<div class="msec">Products</div>';
   h+='<div id="rec-items">';
-  var allRecOptions = '<optgroup label="Presentations">'+Object.keys(PRODS).map(function(p){return '<option value="'+esc(p)+'">'+esc(p)+'</option>';}).join('')+'</optgroup>'
-    +'<optgroup label="Base products">'+Object.keys(BASE_PRODUCTS).map(function(k){return '<option value="'+esc(k)+'">'+esc(BASE_PRODUCTS[k].name)+'</option>';}).join('')+'</optgroup>';
-  var initItems=r?r.items:[{p:Object.keys(PRODS)[0]||Object.keys(BASE_PRODUCTS)[0]||'',q:1}];
-  initItems.forEach(function(item){
-    h+='<div class="product-row"><select>'+allRecOptions.replace('value="'+esc(item.p)+'"','value="'+esc(item.p)+'" selected')+'</select><input type="number" min="1" value="'+item.q+'"><button onclick="this.parentNode.remove()">&#x00D7;</button></div>';
-  });
+  var sortedProds=Object.keys(PRODS).sort(function(a,b){return a.toLowerCase()<b.toLowerCase()?-1:1;});
+  var sortedBase=Object.keys(BASE_PRODUCTS).sort(function(a,b){return (BASE_PRODUCTS[a].name||'').toLowerCase()<(BASE_PRODUCTS[b].name||'').toLowerCase()?-1:1;});
+  var allRecOptions='<option value="">-- select --</option>'
+    +'<optgroup label="Presentations">'+sortedProds.map(function(p){return '<option value="'+esc(p)+'">'+esc(p)+'</option>';}).join('')+'</optgroup>'
+    +'<optgroup label="Base products">'+sortedBase.map(function(k){return '<option value="'+esc(k)+'">'+esc(BASE_PRODUCTS[k].name)+'</option>';}).join('')+'</optgroup>';
+  var initItems=r?r.items:[];
+  if(initItems.length){
+    initItems.forEach(function(item){
+      var opts='<option value="">-- select --</option>'
+        +'<optgroup label="Presentations">'+sortedProds.map(function(p){return '<option value="'+esc(p)+'"'+(p===item.p?' selected':'')+'>'+esc(p)+'</option>';}).join('')+'</optgroup>'
+        +'<optgroup label="Base products">'+sortedBase.map(function(k){return '<option value="'+esc(k)+'"'+(k===item.p?' selected':'')+'>'+esc(BASE_PRODUCTS[k].name)+'</option>';}).join('')+'</optgroup>';
+      h+='<div class="product-row"><select>'+opts+'</select><input type="number" min="1" value="'+item.q+'"><button onclick="this.parentNode.remove()">&#x00D7;</button></div>';
+    });
+  }
   h+='</div>';
   h+='<button class="add-btn" onclick="addRecRow()" style="margin-bottom:12px">+ add product</button>';
   h+='<div class="mactions"><button class="btn accent" onclick="saveRecurringForm('+(id||'null')+')" style="padding:10px;font-size:13px">Save recurring order</button></div>';
@@ -1663,8 +1667,11 @@ function openRecurringForm(id){
 }
 function addRecRow(){
   var c=document.getElementById('rec-items');var r=document.createElement('div');r.className='product-row';
-  var opts='<optgroup label="Presentations">'+Object.keys(PRODS).map(function(p){return '<option value="'+esc(p)+'">'+esc(p)+'</option>';}).join('')+'</optgroup>'
-    +'<optgroup label="Base products">'+Object.keys(BASE_PRODUCTS).map(function(k){return '<option value="'+esc(k)+'">'+esc(BASE_PRODUCTS[k].name)+'</option>';}).join('')+'</optgroup>';
+  var sp=Object.keys(PRODS).sort(function(a,b){return a.toLowerCase()<b.toLowerCase()?-1:1;});
+  var sb=Object.keys(BASE_PRODUCTS).sort(function(a,b){return (BASE_PRODUCTS[a].name||'').toLowerCase()<(BASE_PRODUCTS[b].name||'').toLowerCase()?-1:1;});
+  var opts='<option value="">-- select --</option>'
+    +'<optgroup label="Presentations">'+sp.map(function(p){return '<option value="'+esc(p)+'">'+esc(p)+'</option>';}).join('')+'</optgroup>'
+    +'<optgroup label="Base products">'+sb.map(function(k){return '<option value="'+esc(k)+'">'+esc(BASE_PRODUCTS[k].name)+'</option>';}).join('')+'</optgroup>';
   r.innerHTML='<select>'+opts+'</select><input type="number" min="1" value="1"><button onclick="this.parentNode.remove()">&#x00D7;</button>';
   c.appendChild(r);
 }
@@ -1815,10 +1822,11 @@ function renderAdminPres(){
     html+='<span class="combo-arrow" id="arr-'+sid+'">&#x25BC;</span></div></div>';
     html+='<div class="combo-body" id="body-'+sid+'">';
     html+='<div id="units-'+sid+'">';
+    var sortedBpConf=Object.keys(BASE_PRODUCTS).sort(function(a,b){return (BASE_PRODUCTS[a].name||'').toLowerCase()<(BASE_PRODUCTS[b].name||'').toLowerCase()?-1:1;});
     Object.keys(units).forEach(function(u){
       html+='<div class="unit-row" id="ur-'+sid+'-'+u+'">';
       html+='<select style="flex:1;padding:5px 9px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;font-family:inherit" onchange="updateComboUnit(\''+name.replace(/'/g,"\\'")+'\',\''+u+'\',this.value,\''+sid+'\')">';
-      Object.keys(BASE_PRODUCTS).forEach(function(bk){
+      sortedBpConf.forEach(function(bk){
         html+='<option value="'+bk+'"'+(bk===u?' selected':'')+'>'+esc(BASE_PRODUCTS[bk].name)+'</option>';
       });
       html+='</select>';
@@ -1852,7 +1860,8 @@ function openNewPresModal(){
   addNewPresUnit();
 }
 function addNewPresUnit(){
-  var bpOptions=Object.keys(BASE_PRODUCTS).map(function(k){return '<option value="'+k+'">'+esc(BASE_PRODUCTS[k].name)+'</option>';}).join('');
+  var sortedBpNp=Object.keys(BASE_PRODUCTS).sort(function(a,b){return (BASE_PRODUCTS[a].name||'').toLowerCase()<(BASE_PRODUCTS[b].name||'').toLowerCase()?-1:1;});
+  var bpOptions=sortedBpNp.map(function(k){return '<option value="'+k+'">'+esc(BASE_PRODUCTS[k].name)+'</option>';}).join('');
   var c=document.getElementById('np-units');var r=document.createElement('div');
   r.className='np-row';
   r.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:6px';
@@ -1879,10 +1888,11 @@ function saveNewPres(){
 function buildUnitsHtml(name,sid){
   var units=PRODS[name].u||{};
   var html='';
+  var sortedBp=Object.keys(BASE_PRODUCTS).sort(function(a,b){return (BASE_PRODUCTS[a].name||'').toLowerCase()<(BASE_PRODUCTS[b].name||'').toLowerCase()?-1:1;});
   Object.keys(units).forEach(function(u){
     html+='<div class="unit-row" id="ur-'+sid+'-'+u+'">';
     html+='<select style="flex:1;padding:5px 9px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;font-family:inherit" onchange="updateComboUnit(\''+name.replace(/'/g,"\\'")+'\',\''+u+'\',this.value,\''+sid+'\')">';
-    Object.keys(BASE_PRODUCTS).forEach(function(bk){
+    sortedBp.forEach(function(bk){
       html+='<option value="'+bk+'"'+(bk===u?' selected':'')+'>'+esc(BASE_PRODUCTS[bk].name)+'</option>';
     });
     html+='</select>';
@@ -1895,10 +1905,10 @@ function buildUnitsHtml(name,sid){
 function addPresUnit(name,sid){
   if(!PRODS[name])return;
   if(!Object.keys(BASE_PRODUCTS).length)return alert('No base products available. Add some in the Base products tab first.');
-  // Add an empty row to the DOM only — no PRODS change until Save
   var unitsEl=document.getElementById('units-'+sid);
   if(!unitsEl)return;
-  var bpOptions='<option value="">-- select --</option>'+Object.keys(BASE_PRODUCTS).map(function(bk){return '<option value="'+bk+'">'+esc(BASE_PRODUCTS[bk].name)+'</option>';}).join('');
+  var sortedBpAp=Object.keys(BASE_PRODUCTS).sort(function(a,b){return (BASE_PRODUCTS[a].name||'').toLowerCase()<(BASE_PRODUCTS[b].name||'').toLowerCase()?-1:1;});
+  var bpOptions='<option value="">-- select --</option>'+sortedBpAp.map(function(bk){return '<option value="'+bk+'">'+esc(BASE_PRODUCTS[bk].name)+'</option>';}).join('');
   var row=document.createElement('div');
   row.className='unit-row';
   row.innerHTML='<select style="flex:1;padding:5px 9px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;font-family:inherit">'+bpOptions+'</select>'
@@ -2082,7 +2092,8 @@ function saveNewOrder(){
 
 function addRow(){
   var c=document.getElementById('new-items');var r=document.createElement('div');r.className='product-row';
-  r.innerHTML='<select>'+Object.keys(PRODS).map(function(p){return '<option>'+p+'</option>';}).join('')+'</select><input type="number" min="1" value="1"><button onclick="this.parentNode.remove()">&#x00D7;</button>';
+  var sp=Object.keys(PRODS).sort(function(a,b){return a.toLowerCase()<b.toLowerCase()?-1:1;});
+  r.innerHTML='<select><option value="">-- select --</option>'+sp.map(function(p){return '<option value="'+esc(p)+'">'+esc(p)+'</option>';}).join('')+'</select><input type="number" min="1" value="1"><button onclick="this.parentNode.remove()">&#x00D7;</button>';
   c.appendChild(r);
 }
 
