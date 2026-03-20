@@ -569,6 +569,7 @@ async function apiFetch(path, options){
 async function refreshOrders(){
   var btn=document.getElementById('refresh-btn');
   btn.textContent='↻ Loading...';btn.disabled=true;
+  await apiLoadConfig();
   await apiLoadOrders();
   renderAll();
   btn.textContent='↻ Refresh';btn.disabled=false;
@@ -928,7 +929,8 @@ function renderOrders(){
   });
   var recSection=document.getElementById('rec-inline-section');
   var recCards=document.getElementById('rec-inline-cards');
-  if(recSugs.length>0){
+  // Only show recurring suggestions in 'all' filter (not in custom date)
+  if(filt!=='custom'&&recSugs.length>0){
     recSection.style.display='block';
     var rHtml='<div class="cards">';
     recSugs.forEach(function(r){
@@ -948,39 +950,22 @@ function renderOrders(){
     recSection.style.display='none';
   }
 
-  // topbar total (admin only)
-  if(currentRole==='admin'){
-    var weekIsos=days.map(isoDate);
-    var weekTotal=ORDERS.filter(function(o){return o.date&&weekIsos.indexOf(o.date)>=0;}).reduce(function(s,o){return s+(o.total||0);},0);
-    // simpler: sum prices from order value stored
-    weekTotal=ORDERS.filter(function(o){return o.date&&weekIsos.indexOf(o.date)>=0;}).reduce(function(s,o){return s+getOrderValue(o);},0);
-    var tot=document.getElementById('topbar-total');
-    tot.textContent='$'+weekTotal+' this week';
-    tot.style.display='';
-  }
+  // topbar total hidden
 
   if(filt==='custom'){
     var weekIsos=weekDates(oW).map(isoDate);
     var nameQ=(document.getElementById('order-search')||{}).value||'';
     var nameFilter=nameQ.toLowerCase().trim();
-    // Unallocated: customDate=true AND no date
+    // Only show unallocated (no date assigned yet)
     var unalloc=ORDERS.filter(function(o){
       return o.customDate&&!o.date&&(!nameFilter||o.name.toLowerCase().indexOf(nameFilter)>=0);
-    });
-    // Allocated this week: customDate=true AND date falls in current week
-    var allocThisWeek=ORDERS.filter(function(o){
-      return o.customDate&&o.date&&weekIsos.indexOf(o.date)>=0&&(!nameFilter||o.name.toLowerCase().indexOf(nameFilter)>=0);
     });
     var html='';
     if(unalloc.length){
       html+='<div style="font-size:12px;font-weight:700;color:var(--purple);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Pending date assignment ('+unalloc.length+')</div>';
       html+='<div class="cards" style="margin-bottom:20px">'+unalloc.map(renderCard).join('')+'</div>';
     }
-    if(allocThisWeek.length){
-      html+='<div style="font-size:12px;font-weight:700;color:var(--purple);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Allocated this week ('+allocThisWeek.length+')</div>';
-      html+='<div class="cards">'+allocThisWeek.map(renderCard).join('')+'</div>';
-    }
-    if(!html)html='<div style="padding:32px;text-align:center;color:var(--text-3);font-size:13px">No custom date orders this week</div>';
+    if(!html)html='<div style="padding:32px;text-align:center;color:var(--text-3);font-size:13px">No custom date orders pending</div>';
     document.getElementById('orders-body').innerHTML=html;
     return;
   }
@@ -1068,7 +1053,7 @@ function renderCard(o){
   h+='<span class="tag '+(o.fulfillment==='fulfilled'?'t-ful':'t-unf')+'">'+o.fulfillment+'</span>';
   h+='<span class="tag '+(o.delivery==='delivered'?'t-deliv':'t-pend')+'">'+o.delivery+'</span>';
   if(o.recurring)h+='<span class="tag t-recurring">recurring</span>';
-  if(o.customDate)h+='<span class="tag t-custom">custom date</span>';
+  if(o.customDate&&!o.date)h+='<span class="tag t-custom">custom date</span>';
   h+='</div>';
   h+='<div class="card-items">'+o.items.map(function(i){return '<div class="card-item"><span>'+esc(i.p)+'</span><span>\u00d7'+i.q+'</span></div>';}).join('')+'</div>';
   if(o.edited)h+='<div class="card-edit-flag">\u270f edited by '+esc(o.editedBy)+'</div>';
@@ -1123,8 +1108,8 @@ function saveDateTime(id){
   var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;
   var dv=document.getElementById('ed-'+id),sv=document.getElementById('es-'+id);
   if(dv&&dv.value){
-    o.date=dv.value;o.shift=sv.value;o.customDate=false;o.edited=true;o.editedBy=currentUser;
-    apiUpdateOrder(id,{date:o.date,shift:o.shift,customDate:false,edited:true,editedBy:currentUser});
+    o.date=dv.value;o.shift=sv.value;o.edited=true;o.editedBy=currentUser;
+    apiUpdateOrder(id,{date:o.date,shift:o.shift,edited:true,editedBy:currentUser});
   }
   openModal(id);renderOrders();
 }
@@ -1149,7 +1134,9 @@ function setDelivered(id){
   if(o.fulfillment!=='fulfilled'){
     if(confirm('This order is not marked as fulfilled yet. Mark it as fulfilled too?')){
       o.fulfillment='fulfilled';
-      setFulfillment(id);
+      // Sync fulfill to Wix
+      if(o.wix) apiFetch('/api/fulfill',{method:'POST',body:JSON.stringify({wixOrderNumber:o.wix})})
+        .catch(function(e){console.warn('Could not sync fulfillment to Wix:',e.message);});
     }
   }
   o.delivery='delivered';o.edited=true;o.editedBy=currentUser;
@@ -1653,9 +1640,11 @@ function openRecurringForm(id){
   h+='</div>';
   h+='<div class="msec">Products</div>';
   h+='<div id="rec-items">';
-  var initItems=r?r.items:[{p:Object.keys(PRODS)[0],q:1}];
+  var allRecOptions = '<optgroup label="Presentations">'+Object.keys(PRODS).map(function(p){return '<option value="'+esc(p)+'">'+esc(p)+'</option>';}).join('')+'</optgroup>'
+    +'<optgroup label="Base products">'+Object.keys(BASE_PRODUCTS).map(function(k){return '<option value="'+esc(k)+'">'+esc(BASE_PRODUCTS[k].name)+'</option>';}).join('')+'</optgroup>';
+  var initItems=r?r.items:[{p:Object.keys(PRODS)[0]||Object.keys(BASE_PRODUCTS)[0]||'',q:1}];
   initItems.forEach(function(item){
-    h+='<div class="product-row"><select>'+Object.keys(PRODS).map(function(p){return '<option'+(p===item.p?' selected':'')+'>'+p+'</option>';}).join('')+'</select><input type="number" min="1" value="'+item.q+'"><button onclick="this.parentNode.remove()">&#x00D7;</button></div>';
+    h+='<div class="product-row"><select>'+allRecOptions.replace('value="'+esc(item.p)+'"','value="'+esc(item.p)+'" selected')+'</select><input type="number" min="1" value="'+item.q+'"><button onclick="this.parentNode.remove()">&#x00D7;</button></div>';
   });
   h+='</div>';
   h+='<button class="add-btn" onclick="addRecRow()" style="margin-bottom:12px">+ add product</button>';
@@ -1665,7 +1654,9 @@ function openRecurringForm(id){
 }
 function addRecRow(){
   var c=document.getElementById('rec-items');var r=document.createElement('div');r.className='product-row';
-  r.innerHTML='<select>'+Object.keys(PRODS).map(function(p){return '<option>'+p+'</option>';}).join('')+'</select><input type="number" min="1" value="1"><button onclick="this.parentNode.remove()">&#x00D7;</button>';
+  var opts='<optgroup label="Presentations">'+Object.keys(PRODS).map(function(p){return '<option value="'+esc(p)+'">'+esc(p)+'</option>';}).join('')+'</optgroup>'
+    +'<optgroup label="Base products">'+Object.keys(BASE_PRODUCTS).map(function(k){return '<option value="'+esc(k)+'">'+esc(BASE_PRODUCTS[k].name)+'</option>';}).join('')+'</optgroup>';
+  r.innerHTML='<select>'+opts+'</select><input type="number" min="1" value="1"><button onclick="this.parentNode.remove()">&#x00D7;</button>';
   c.appendChild(r);
 }
 function saveRecurringForm(id){
