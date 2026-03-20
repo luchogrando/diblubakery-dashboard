@@ -44,5 +44,3 @@ module.exports = async function handler(req, res) {
 };
 
 const { requireAuth } = require('./_auth');
-function isValidToken_unused() {
-}
