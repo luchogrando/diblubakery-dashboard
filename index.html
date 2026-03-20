@@ -1764,7 +1764,7 @@ function renderAdminPres(){
       html+='<div id="units-'+sid+'"></div>';
       html+='<div style="margin-top:8px;display:flex;gap:8px;align-items:center">';
       html+='<button class="btn" style="font-size:11px;padding:4px 11px" onclick="addPresUnit(\''+name.replace(/'/g,"\\'")+'\',\''+sid+'\')">+ add product</button>';
-      html+='<button class="btn accent" onclick="flashSaved(\''+sid+'\');updateAdminBadge()">Save changes</button>';
+      html+='<button class="btn accent" onclick="savePresConfig(\''+name.replace(/'/g,"\\'")+'\',\''+sid+'\')">Save changes</button>';
       html+='<span class="save-flash" id="flash-'+sid+'">Saved! &#x2713;</span></div></div></div>';
     });
     html+='</div>';
@@ -1798,7 +1798,7 @@ function renderAdminPres(){
     html+='</div>';
     html+='<div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
     html+='<button class="btn" style="font-size:11px;padding:4px 11px" onclick="addPresUnit(\''+name.replace(/'/g,"\\'")+'\',\''+sid+'\')">+ add product</button>';
-    html+='<button class="btn accent" onclick="flashSaved(\''+sid+'\')">Save changes</button>';
+    html+='<button class="btn accent" onclick="savePresConfig(\''+name.replace(/'/g,"\\'")+'\',\''+sid+'\')">Save changes</button>';
     html+='<span class="save-flash" id="flash-'+sid+'">Saved! &#x2713;</span>';
     html+='</div></div></div>';
   });
@@ -1881,10 +1881,9 @@ function addPresUnit(name,sid){
   }
 }
 function updateComboUnit(name,oldKey,newKey,sid){
-  if(!PRODS[name])return;
-  var qty=PRODS[name].u[oldKey]||1;
-  delete PRODS[name].u[oldKey];
-  PRODS[name].u[newKey]=(PRODS[name].u[newKey]||0)+qty;
+  // Only update DOM — PRODS is updated on Save to avoid auto-saving on dropdown change
+  var row=document.getElementById('ur-'+sid+'-'+oldKey);
+  if(row)row.id='ur-'+sid+'-'+newKey;
 }
 function removePresUnit(name,key,sid){
   if(!PRODS[name])return;
@@ -1893,7 +1892,31 @@ function removePresUnit(name,key,sid){
   var body=document.getElementById('body-'+sid);
   if(body){body.className='combo-body open';var arr=document.getElementById('arr-'+sid);if(arr)arr.className='combo-arrow open';}
 }
-function deletePres(name){
+function savePresConfig(name,sid){
+  // Read current state from DOM rows — avoids stale PRODS from mid-edit dropdowns
+  if(!PRODS[name])return;
+  var unitsEl=document.getElementById('units-'+sid);
+  if(unitsEl){
+    var newU={};
+    unitsEl.querySelectorAll('.unit-row').forEach(function(row){
+      var sel=row.querySelector('select');
+      var inp=row.querySelector('input[type="number"]');
+      if(sel&&sel.value&&inp){
+        var qty=parseInt(inp.value)||0;
+        if(qty>0)newU[sel.value]=(newU[sel.value]||0)+qty;
+      }
+    });
+    PRODS[name].u=newU;
+  }
+  flashSaved(sid);
+  updateAdminBadge();
+  renderAdminPres();
+  // Re-open the card after re-render
+  setTimeout(function(){
+    var body=document.getElementById('body-'+sid);
+    if(body){body.className='combo-body open';var arr=document.getElementById('arr-'+sid);if(arr)arr.className='combo-arrow open';}
+  },0);
+}
   if(!confirm('Delete "'+name+'"?'))return;
   delete PRODS[name];renderAdminPres();apiSaveConfig();
 }
