@@ -714,12 +714,16 @@ async function apiLoadOrders(){
   try {
     var data = await apiFetch('/api/orders');
     if(data.orders) ORDERS = data.orders;
-    // auto-add any product names from orders that aren't in PRODS yet
+    // auto-add any product names from non-recurring orders that aren't in PRODS yet
+    var baseNames=Object.keys(BASE_PRODUCTS).map(function(k){return BASE_PRODUCTS[k].name.toLowerCase();});
     ORDERS.forEach(function(o){
+      if(o.recurring)return; // skip recurring orders — their items are managed manually
       (o.items||[]).forEach(function(it){
-        if(it.p && !PRODS[it.p]){
-          PRODS[it.p] = {u:{}};
-        }
+        if(!it.p)return;
+        if(PRODS[it.p])return;
+        if(BASE_PRODUCTS[it.p])return;
+        if(baseNames.indexOf(it.p.toLowerCase())>=0)return;
+        PRODS[it.p]={u:{}};
       });
     });
     // detect new unconfigured products from Wix
@@ -1255,12 +1259,23 @@ function renderProd(){
   weekOrders.forEach(function(o){
     o.items.forEach(function(it){
       presMap[o.date][it.p]=(presMap[o.date][it.p]||0)+it.q;
-      var pr=PRODS[it.p];if(!pr)return;
-      Object.keys(pr.u).forEach(function(u){
-        var n=pr.u[u]*it.q;unitMap[o.date][u]=(unitMap[o.date][u]||0)+n;
-        if(!unitBD[o.date][u])unitBD[o.date][u]=[];
-        unitBD[o.date][u].push({p:it.p,boxQ:it.q,n:n});
-      });
+      var pr=PRODS[it.p];
+      if(pr){
+        // Normal presentation — explode into base units
+        Object.keys(pr.u).forEach(function(u){
+          var n=pr.u[u]*it.q;unitMap[o.date][u]=(unitMap[o.date][u]||0)+n;
+          if(!unitBD[o.date][u])unitBD[o.date][u]=[];
+          unitBD[o.date][u].push({p:it.p,boxQ:it.q,n:n,recurring:o.recurring});
+        });
+      } else {
+        // Base product used directly (e.g. from recurring order)
+        var bpKey=BASE_PRODUCTS[it.p]?it.p:Object.keys(BASE_PRODUCTS).find(function(k){return BASE_PRODUCTS[k].name===it.p;});
+        if(bpKey){
+          unitMap[o.date][bpKey]=(unitMap[o.date][bpKey]||0)+it.q;
+          if(!unitBD[o.date][bpKey])unitBD[o.date][bpKey]=[];
+          unitBD[o.date][bpKey].push({p:it.p,boxQ:it.q,n:it.q,recurring:o.recurring});
+        }
+      }
     });
   });
   window._UBD=unitBD;window._ISOS=isos;window._DAYS=days;
@@ -1279,14 +1294,15 @@ function showPopup(e,day,unit){
   e.stopPropagation();
   var bd=window._UBD||{},isos=window._ISOS||[];
   var days=day==='all'?isos:[day];var combined={};
-  days.forEach(function(d){((bd[d]&&bd[d][unit])||[]).forEach(function(r){if(!combined[r.p])combined[r.p]={n:0,boxQ:0};combined[r.p].n+=r.n;combined[r.p].boxQ+=r.boxQ;});});
+  days.forEach(function(d){((bd[d]&&bd[d][unit])||[]).forEach(function(r){if(!combined[r.p])combined[r.p]={n:0,boxQ:0,recurring:r.recurring};combined[r.p].n+=r.n;combined[r.p].boxQ+=r.boxQ;});});
   var total=Object.values(combined).reduce(function(s,v){return s+v.n;},0);
   if(!total)return;
   var title=(UL[unit]||unit)+(day==='all'?' \u00b7 full week':' \u00b7 '+fmtS(new Date(day+'T12:00')));
   var h='<div class="mtitle">'+esc(title)+'<button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
   h+='<div class="msec">Breakdown by presentation</div>';
   Object.keys(combined).forEach(function(p){
-    h+='<div class="mrow"><span class="ml">'+esc(p)+' \u00d7'+combined[p].boxQ+'</span><span class="mr" style="font-weight:700">'+combined[p].n+' units</span></div>';
+    var label=combined[p].recurring?esc(p)+' <span style="font-size:10px;color:var(--recurring);font-weight:600">recurring</span>':esc(p);
+    h+='<div class="mrow"><span class="ml">'+label+' \u00d7'+combined[p].boxQ+'</span><span class="mr" style="font-weight:700">'+combined[p].n+' units</span></div>';
   });
   h+='<div style="display:flex;justify-content:space-between;padding:10px 0 0;margin-top:6px;border-top:1px solid var(--border);font-size:14px;font-weight:700"><span>Total</span><span style="color:var(--accent)">'+total+'</span></div>';
   document.getElementById('mbox').innerHTML=h;
