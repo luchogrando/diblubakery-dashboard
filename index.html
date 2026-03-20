@@ -1917,6 +1917,7 @@ function savePresConfig(name,sid){
     if(body){body.className='combo-body open';var arr=document.getElementById('arr-'+sid);if(arr)arr.className='combo-arrow open';}
   },0);
 }
+function deletePres(name){
   if(!confirm('Delete "'+name+'"?'))return;
   delete PRODS[name];renderAdminPres();apiSaveConfig();
 }
