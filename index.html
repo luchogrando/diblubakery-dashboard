@@ -406,8 +406,14 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
         <option value="morning">Morning</option>
         <option value="afternoon">Afternoon</option>
       </select>
+      <select id="prod-type-filter" onchange="renderProd()" style="margin-left:6px;padding:5px 10px;border:1px solid var(--border-dark);border-radius:7px;font-size:12px;font-family:inherit;background:var(--bg);color:var(--text-1);cursor:pointer">
+        <option value="all">All orders</option>
+        <option value="client">Client orders</option>
+        <option value="recurring">Recurring only</option>
+      </select>
     </div>
     <div class="stitle">Presentations to pack</div>
+    <div class="ssub">Tap any number to see the orders</div>
     <div class="twrap"><table class="stable" id="pres-t"></table></div>
     <div class="stitle">Units to produce</div>
     <div class="ssub">Tap any number to see the breakdown</div>
@@ -1249,61 +1255,128 @@ function renderProd(){
   document.getElementById('p-wlabel').textContent=fmtWeek(pW);
   var days=weekDates(pW);var isos=days.map(isoDate);
   var shiftSel=(document.getElementById('prod-shift-filter')||{}).value||'all';
+  var typeSel=(document.getElementById('prod-type-filter')||{}).value||'all';
   var weekOrders=ORDERS.filter(function(o){
     if(!o.date||isos.indexOf(o.date)<0)return false;
     if(shiftSel!=='all'&&o.shift!==shiftSel)return false;
+    if(typeSel==='client'&&o.recurring)return false;
+    if(typeSel==='recurring'&&!o.recurring)return false;
     return true;
   });
-  var presMap={},unitMap={},unitBD={};
-  isos.forEach(function(d){presMap[d]={};unitMap[d]={};unitBD[d]={};});
+
+  // presMap: presentation name → day → qty
+  // presBD: presentation name → day → [{wix, name, q}]
+  var presMap={},presBD={},unitMap={},unitBD={};
+  isos.forEach(function(d){presMap[d]={};presBD[d]={};unitMap[d]={};unitBD[d]={};});
+
   weekOrders.forEach(function(o){
     o.items.forEach(function(it){
-      presMap[o.date][it.p]=(presMap[o.date][it.p]||0)+it.q;
-      var pr=PRODS[it.p];
-      if(pr){
-        // Normal presentation — explode into base units
+      var isPresentation=!!PRODS[it.p];
+      if(isPresentation){
+        // Presentations to pack
+        presMap[o.date][it.p]=(presMap[o.date][it.p]||0)+it.q;
+        if(!presBD[o.date][it.p])presBD[o.date][it.p]=[];
+        presBD[o.date][it.p].push({wix:o.wix,name:o.name,q:it.q,recurring:o.recurring});
+        // Explode into units
+        var pr=PRODS[it.p];
         Object.keys(pr.u).forEach(function(u){
-          var n=pr.u[u]*it.q;unitMap[o.date][u]=(unitMap[o.date][u]||0)+n;
+          var n=pr.u[u]*it.q;
+          unitMap[o.date][u]=(unitMap[o.date][u]||0)+n;
           if(!unitBD[o.date][u])unitBD[o.date][u]=[];
-          unitBD[o.date][u].push({p:it.p,boxQ:it.q,n:n,recurring:o.recurring});
+          unitBD[o.date][u].push({p:it.p,boxQ:it.q,n:n,recurring:o.recurring,fromPres:true});
         });
       } else {
-        // Base product used directly (e.g. from recurring order)
+        // Base product used directly (recurring order)
         var bpKey=BASE_PRODUCTS[it.p]?it.p:Object.keys(BASE_PRODUCTS).find(function(k){return BASE_PRODUCTS[k].name===it.p;});
         if(bpKey){
           unitMap[o.date][bpKey]=(unitMap[o.date][bpKey]||0)+it.q;
           if(!unitBD[o.date][bpKey])unitBD[o.date][bpKey]=[];
-          unitBD[o.date][bpKey].push({p:it.p,boxQ:it.q,n:it.q,recurring:o.recurring});
+          unitBD[o.date][bpKey].push({p:it.p,boxQ:it.q,n:it.q,recurring:o.recurring,fromPres:false});
         }
       }
     });
   });
-  window._UBD=unitBD;window._ISOS=isos;window._DAYS=days;
-  var allPres=[],allUnits=[];
-  weekOrders.forEach(function(o){o.items.forEach(function(it){if(allPres.indexOf(it.p)<0)allPres.push(it.p);var pr=PRODS[it.p];if(pr)Object.keys(pr.u).forEach(function(u){if(allUnits.indexOf(u)<0)allUnits.push(u);});});});
+
+  window._UBD=unitBD;window._PBD=presBD;window._ISOS=isos;window._DAYS=days;
+
+  // Presentations to pack — only items in PRODS
+  var allPres=[];
+  weekOrders.forEach(function(o){o.items.forEach(function(it){if(PRODS[it.p]&&allPres.indexOf(it.p)<0)allPres.push(it.p);});});
+  allPres.sort(function(a,b){return a.toLowerCase()<b.toLowerCase()?-1:1;});
   var ph='<thead><tr><th>Presentation</th>'+days.map(function(d){return '<th class="day-h">'+fmtS(d)+'</th>';}).join('')+'<th class="tot-h">Total</th></tr></thead><tbody>';
   if(!allPres.length)ph+='<tr><td colspan="'+(days.length+2)+'" style="padding:16px;color:var(--text-3)">No orders this week</td></tr>';
-  else allPres.forEach(function(p){var tot=isos.reduce(function(s,d){return s+(presMap[d][p]||0);},0);ph+='<tr><td>'+esc(p)+'</td>'+isos.map(function(d){var v=presMap[d][p];return v?'<td class="has">'+v+'</td>':'<td class="zero">\u2014</td>';}).join('')+'<td class="tot">'+tot+'</td></tr>';});
+  else allPres.forEach(function(p){
+    var tot=isos.reduce(function(s,d){return s+(presMap[d][p]||0);},0);
+    ph+='<tr><td>'+esc(p)+'</td>';
+    ph+=isos.map(function(d){var v=presMap[d][p];return v?'<td class="has"><span class="ulink" onclick="showPresPopup(event,\''+d+'\',\''+p.replace(/'/g,"\\'")+'\')">'+ v+'</span></td>':'<td class="zero">\u2014</td>';}).join('');
+    ph+='<td class="tot"><span class="ulink" onclick="showPresPopup(event,\'all\',\''+p.replace(/'/g,"\\'")+'\')">'+tot+'</span></td></tr>';
+  });
   ph+='</tbody>';document.getElementById('pres-t').innerHTML=ph;
+
+  // Units to produce
+  var allUnits=[];
+  weekOrders.forEach(function(o){o.items.forEach(function(it){
+    if(PRODS[it.p]){Object.keys(PRODS[it.p].u).forEach(function(u){if(allUnits.indexOf(u)<0)allUnits.push(u);});}
+    else{var bk=BASE_PRODUCTS[it.p]?it.p:Object.keys(BASE_PRODUCTS).find(function(k){return BASE_PRODUCTS[k].name===it.p;});if(bk&&allUnits.indexOf(bk)<0)allUnits.push(bk);}
+  });});
   var uh='<thead><tr><th>Ingredient</th>'+days.map(function(d){return '<th class="day-h">'+fmtS(d)+'</th>';}).join('')+'<th class="tot-h">Total</th></tr></thead><tbody>';
   if(!allUnits.length)uh+='<tr><td colspan="'+(days.length+2)+'" style="padding:16px;color:var(--text-3)">No orders this week</td></tr>';
-  else allUnits.forEach(function(u){var tot=isos.reduce(function(s,d){return s+(unitMap[d][u]||0);},0);uh+='<tr><td>'+(UL[u]||u)+'</td>'+isos.map(function(d){var v=unitMap[d][u];return v?'<td class="has"><span class="ulink" onclick="showPopup(event,\''+d+'\',\''+u+'\')">'+v+'</span></td>':'<td class="zero">\u2014</td>';}).join('')+'<td class="tot"><span class="ulink" onclick="showPopup(event,\'all\',\''+u+'\')">'+tot+'</span></td></tr>';});
+  else allUnits.forEach(function(u){
+    var tot=isos.reduce(function(s,d){return s+(unitMap[d][u]||0);},0);
+    uh+='<tr><td>'+(UL[u]||u)+'</td>';
+    uh+=isos.map(function(d){var v=unitMap[d][u];return v?'<td class="has"><span class="ulink" onclick="showPopup(event,\''+d+'\',\''+u+'\')">'+v+'</span></td>':'<td class="zero">\u2014</td>';}).join('');
+    uh+='<td class="tot"><span class="ulink" onclick="showPopup(event,\'all\',\''+u+'\')">'+tot+'</span></td></tr>';
+  });
   uh+='</tbody>';document.getElementById('units-t').innerHTML=uh;
+}
+function showPresPopup(e,day,pres){
+  e.stopPropagation();
+  var bd=window._PBD||{},isos=window._ISOS||[];
+  var days=day==='all'?isos:[day];
+  var orders=[];
+  days.forEach(function(d){((bd[d]&&bd[d][pres])||[]).forEach(function(r){orders.push({wix:r.wix,name:r.name,q:r.q,recurring:r.recurring,date:d});});});
+  if(!orders.length)return;
+  var total=orders.reduce(function(s,r){return s+r.q;},0);
+  var title=esc(pres)+(day==='all'?' \u00b7 full week':' \u00b7 '+fmtS(new Date(day+'T12:00')));
+  var h='<div class="mtitle">'+title+'<button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
+  h+='<div class="msec">Orders</div>';
+  orders.forEach(function(r){
+    var tag=r.recurring?'<span style="font-size:10px;color:var(--recurring);font-weight:600;margin-left:5px">recurring</span>':'';
+    h+='<div class="mrow"><span class="ml">'+esc(r.name)+' '+esc(r.wix)+tag+'</span><span class="mr" style="font-weight:700">\u00d7'+r.q+'</span></div>';
+  });
+  h+='<div style="display:flex;justify-content:space-between;padding:10px 0 0;margin-top:6px;border-top:1px solid var(--border);font-size:14px;font-weight:700"><span>Total</span><span style="color:var(--accent)">'+total+'</span></div>';
+  document.getElementById('mbox').innerHTML=h;
+  document.getElementById('overlay').className='overlay on';
 }
 function showPopup(e,day,unit){
   e.stopPropagation();
   var bd=window._UBD||{},isos=window._ISOS||[];
   var days=day==='all'?isos:[day];var combined={};
-  days.forEach(function(d){((bd[d]&&bd[d][unit])||[]).forEach(function(r){if(!combined[r.p])combined[r.p]={n:0,boxQ:0,recurring:r.recurring};combined[r.p].n+=r.n;combined[r.p].boxQ+=r.boxQ;});});
+  days.forEach(function(d){((bd[d]&&bd[d][unit])||[]).forEach(function(r){
+    var key=r.p+(r.recurring?'__rec':'');
+    if(!combined[key])combined[key]={n:0,boxQ:0,recurring:r.recurring,p:r.p,fromPres:r.fromPres};
+    combined[key].n+=r.n;combined[key].boxQ+=r.boxQ;
+  });});
   var total=Object.values(combined).reduce(function(s,v){return s+v.n;},0);
   if(!total)return;
   var title=(UL[unit]||unit)+(day==='all'?' \u00b7 full week':' \u00b7 '+fmtS(new Date(day+'T12:00')));
   var h='<div class="mtitle">'+esc(title)+'<button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
-  h+='<div class="msec">Breakdown by presentation</div>';
-  Object.keys(combined).forEach(function(p){
-    var label=combined[p].recurring?esc(p)+' <span style="font-size:10px;color:var(--recurring);font-weight:600">recurring</span>':esc(p);
-    h+='<div class="mrow"><span class="ml">'+label+' \u00d7'+combined[p].boxQ+'</span><span class="mr" style="font-weight:700">'+combined[p].n+' units</span></div>';
-  });
+  // Split into presentations and direct recurring
+  var fromPres=Object.values(combined).filter(function(v){return v.fromPres;});
+  var fromRec=Object.values(combined).filter(function(v){return !v.fromPres;});
+  if(fromPres.length){
+    h+='<div class="msec">From presentations</div>';
+    fromPres.forEach(function(v){
+      var tag=v.recurring?'<span style="font-size:10px;color:var(--recurring);font-weight:600;margin-left:5px">recurring</span>':'';
+      h+='<div class="mrow"><span class="ml">'+esc(v.p)+tag+' \u00d7'+v.boxQ+'</span><span class="mr" style="font-weight:700">'+v.n+' units</span></div>';
+    });
+  }
+  if(fromRec.length){
+    h+='<div class="msec">Direct from recurring orders</div>';
+    fromRec.forEach(function(v){
+      h+='<div class="mrow"><span class="ml">'+esc(resolveItemName(v.p))+'</span><span class="mr" style="font-weight:700">'+v.n+' units</span></div>';
+    });
+  }
   h+='<div style="display:flex;justify-content:space-between;padding:10px 0 0;margin-top:6px;border-top:1px solid var(--border);font-size:14px;font-weight:700"><span>Total</span><span style="color:var(--accent)">'+total+'</span></div>';
   document.getElementById('mbox').innerHTML=h;
   document.getElementById('overlay').className='overlay on';
