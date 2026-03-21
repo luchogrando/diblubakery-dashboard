@@ -1647,7 +1647,7 @@ function renderSheet(){
   var sortable=['name','wix','date','fulfillment','delivery','total'];
 
   var html='<div class="sheet-table-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">';
-  html+='<colgroup><col style="width:130px"><col style="width:110px"><col style="width:95px"><col style="width:80px"><col style="width:75px"><col style="min-width:200px"><col style="width:105px"><col style="width:90px"><col style="width:70px"></colgroup>';
+  html+='<colgroup><col style="width:165px"><col style="width:110px"><col style="width:95px"><col style="width:80px"><col style="width:75px"><col style="width:160px"><col style="width:105px"><col style="width:90px"><col style="width:70px"></colgroup>';
   html+='<thead><tr style="border-bottom:2px solid var(--border)">';
   cols.forEach(function(c){
     var canSort=sortable.indexOf(c.key)>=0;
@@ -1659,13 +1659,19 @@ function renderSheet(){
   html+='</tr></thead><tbody>';
   filtered.forEach(function(o,i){
     var bg=i%2===0?'':'background:var(--bg)';
-    html+='<tr style="border-bottom:1px solid var(--border);cursor:pointer;'+bg+'" onclick="openModal('+o.id+')">';
+    html+='<tr style="border-bottom:1px solid var(--border);cursor:pointer;vertical-align:top;'+bg+'" onclick="openModal('+o.id+')">';
     html+='<td style="padding:7px 10px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(o.name)+'</td>';
     html+='<td style="padding:7px 10px;color:var(--text-2);font-family:monospace;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(o.wix)+'</td>';
     html+='<td style="padding:7px 10px;white-space:nowrap">'+(o.date?fmtS(new Date(o.date+'T12:00')):'—')+'</td>';
     html+='<td style="padding:7px 10px;white-space:nowrap">'+esc(o.shift||'—')+'</td>';
     html+='<td style="padding:7px 10px;white-space:nowrap">'+esc(o.type||'—')+'</td>';
-    html+='<td style="padding:7px 10px;font-size:11px;word-break:break-word">'+o.items.map(function(x){return esc(resolveItemName(x.p))+' ×'+x.q;}).join(', ')+'</td>';
+    html+='<td style="padding:7px 10px;font-size:11px">'+o.items.map(function(x){
+      var name=esc(resolveItemName(x.p));
+      return '<div style="display:flex;align-items:baseline;gap:0;white-space:nowrap;overflow:hidden">'
+        +'<span style="overflow:hidden;text-overflow:clip;flex:1;border-bottom:1.5px dotted var(--border-dark);margin-bottom:2px;line-height:1.6">'+name+'</span>'
+        +'<span style="flex-shrink:0;color:var(--text-2);padding-left:4px">\u00d7'+x.q+'</span>'
+        +'</div>';
+    }).join('')+'</td>';
     html+='<td style="padding:7px 10px"><span class="tag '+(o.fulfillment==='fulfilled'?'t-ful':'t-unf')+'">'+esc(o.fulfillment)+'</span></td>';
     html+='<td style="padding:7px 10px"><span class="tag '+(o.delivery==='delivered'?'t-del':'t-pend')+'">'+esc(o.delivery)+'</span></td>';
     html+='<td style="padding:7px 10px">'+(o.total?'$'+o.total:'—')+'</td>';
