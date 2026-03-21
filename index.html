@@ -87,7 +87,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .order-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:0;}
 .order-tab{padding:8px 18px;font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;}
 .order-tab.on{color:var(--accent);border-bottom-color:var(--accent);}
-.sheet-table-wrap{overflow-x:auto;max-height:calc(100vh - 280px);overflow-y:auto;}
+.sheet-table-wrap{overflow-x:hidden;overflow-y:auto;}
 .sheet-table-wrap table thead tr{position:sticky;top:0;z-index:2;background:var(--bg);}
 .sort-arrow{font-size:10px;margin-left:3px;color:var(--text-3);}
 .custom-card{border-left:3px solid var(--purple)!important;}
@@ -1646,25 +1646,26 @@ function renderSheet(){
   ];
   var sortable=['name','wix','date','fulfillment','delivery','total'];
 
-  var html='<div class="sheet-table-wrap"><table style="width:100%;min-width:900px;border-collapse:collapse;font-size:12px">';
+  var html='<div class="sheet-table-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">';
+  html+='<colgroup><col style="width:130px"><col style="width:110px"><col style="width:95px"><col style="width:80px"><col style="width:75px"><col style="min-width:200px"><col style="width:105px"><col style="width:90px"><col style="width:70px"></colgroup>';
   html+='<thead><tr style="border-bottom:2px solid var(--border)">';
   cols.forEach(function(c){
     var canSort=sortable.indexOf(c.key)>=0;
     var isActive=sheetSortCol===c.key;
     var arrow=isActive?(sheetSortDir===1?' ↑':' ↓'):(canSort?' ↕':'');
-        var thOnclick=canSort?(' onclick="sheetSort(\''+c.key+'\')"'):'';
-    html+='<th style="padding:8px 10px;text-align:left;font-weight:600;color:var(--text-2);white-space:nowrap'+(canSort?';cursor:pointer':'')+'"'+thOnclick+'>'+c.label+'<span class="sort-arrow">'+arrow+'</span></th>';
+    var thOnclick=canSort?(' onclick="sheetSort(\''+c.key+'\')"'):'';
+    html+='<th style="padding:8px 10px;text-align:left;font-weight:600;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis'+(canSort?';cursor:pointer':'')+'"'+thOnclick+'>'+c.label+'<span class="sort-arrow">'+arrow+'</span></th>';
   });
   html+='</tr></thead><tbody>';
   filtered.forEach(function(o,i){
     var bg=i%2===0?'':'background:var(--bg)';
     html+='<tr style="border-bottom:1px solid var(--border);cursor:pointer;'+bg+'" onclick="openModal('+o.id+')">';
-    html+='<td style="padding:7px 10px;font-weight:600">'+esc(o.name)+'</td>';
-    html+='<td style="padding:7px 10px;color:var(--text-2);font-family:monospace;font-size:11px">'+esc(o.wix)+'</td>';
+    html+='<td style="padding:7px 10px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(o.name)+'</td>';
+    html+='<td style="padding:7px 10px;color:var(--text-2);font-family:monospace;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(o.wix)+'</td>';
     html+='<td style="padding:7px 10px;white-space:nowrap">'+(o.date?fmtS(new Date(o.date+'T12:00')):'—')+'</td>';
-    html+='<td style="padding:7px 10px">'+esc(o.shift||'—')+'</td>';
-    html+='<td style="padding:7px 10px">'+esc(o.type||'—')+'</td>';
-    html+='<td style="padding:7px 10px;white-space:nowrap;font-size:11px">'+o.items.map(function(x){return esc(resolveItemName(x.p))+' ×'+x.q;}).join(', ')+'</td>';
+    html+='<td style="padding:7px 10px;white-space:nowrap">'+esc(o.shift||'—')+'</td>';
+    html+='<td style="padding:7px 10px;white-space:nowrap">'+esc(o.type||'—')+'</td>';
+    html+='<td style="padding:7px 10px;font-size:11px;word-break:break-word">'+o.items.map(function(x){return esc(resolveItemName(x.p))+' ×'+x.q;}).join(', ')+'</td>';
     html+='<td style="padding:7px 10px"><span class="tag '+(o.fulfillment==='fulfilled'?'t-ful':'t-unf')+'">'+esc(o.fulfillment)+'</span></td>';
     html+='<td style="padding:7px 10px"><span class="tag '+(o.delivery==='delivered'?'t-del':'t-pend')+'">'+esc(o.delivery)+'</span></td>';
     html+='<td style="padding:7px 10px">'+(o.total?'$'+o.total:'—')+'</td>';
