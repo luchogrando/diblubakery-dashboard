@@ -40,7 +40,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .topbar-title{font-size:15px;font-weight:600;}
 .topbar-right{display:flex;gap:8px;align-items:center;}
 .topbar-total{font-size:13px;font-weight:700;color:var(--green);margin-right:4px;}
-.page{display:none;padding:20px 24px;max-width:1320px;}
+.page{display:none;padding:0;max-width:none;min-height:calc(100vh - 53px);}
+.page-header{background:var(--bg);padding:0 24px;position:sticky;top:53px;z-index:25;border-bottom:1px solid var(--border);}
+.page-body{padding:16px 24px;max-width:1320px;}
 .page.on{display:block;}
 .btn{padding:7px 14px;border-radius:7px;border:1px solid var(--border-dark);background:var(--surface);cursor:pointer;font-size:12px;font-weight:600;color:var(--text);font-family:inherit;transition:all .15s;}
 .btn:hover{background:var(--bg);}
@@ -53,7 +55,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .btn.red{background:var(--red);color:#fff;border-color:var(--red);}
 .btn.red:hover{background:#6a1010;}
 .btn:disabled{opacity:.3;cursor:not-allowed;}
-.week-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;position:sticky;top:53px;z-index:20;background:var(--bg);padding:10px 0;margin-bottom:8px;border-bottom:1px solid var(--border);}
+.week-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 0;margin-bottom:0;}
 .wbtn{padding:6px 14px;border:1px solid var(--border-dark);border-radius:7px;background:var(--surface);cursor:pointer;font-size:13px;font-weight:700;color:var(--text);transition:all .15s;}
 .wbtn:hover{background:var(--bg);}
 .wbtn.today-btn{border-color:var(--accent);color:var(--accent);font-size:11px;padding:5px 11px;}
@@ -68,7 +70,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .t-custom{background:var(--purple-light);color:var(--purple);}
 .t-edited{background:#fff0c0;color:#7a5c00;}
 .t-recurring{background:var(--recurring-light);color:var(--recurring);}
-.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;position:sticky;top:106px;z-index:19;background:var(--bg);padding:8px 0;}
+.filters{display:flex;gap:6px;flex-wrap:wrap;padding:8px 0;margin-bottom:0;}
 .fbtn{padding:5px 13px;border:1px solid var(--border-dark);border-radius:99px;background:var(--surface);cursor:pointer;font-size:12px;font-weight:500;color:var(--text-2);transition:all .15s;}
 .fbtn:hover{border-color:#aaa;color:var(--text);}
 .fbtn.on{background:var(--accent);color:#fff;border-color:var(--accent);}
@@ -82,7 +84,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .no-orders{font-size:12px;color:var(--text-3);padding:5px 2px 7px;font-style:italic;}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 13px;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
-.order-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);position:sticky;top:53px;z-index:21;background:var(--bg);margin-bottom:0;}
+.order-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:0;}
 .order-tab{padding:8px 18px;font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;}
 .order-tab.on{color:var(--accent);border-bottom-color:var(--accent);}
 .sheet-table-wrap{overflow-x:auto;max-height:calc(100vh - 280px);overflow-y:auto;}
@@ -330,203 +332,233 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
 
   <!-- ORDERS -->
   <div class="page on" id="page-orders">
-    <div class="order-tabs">
-      <button class="order-tab on" id="otab-calendar" onclick="switchOrderTab('calendar')">Calendar</button>
-      <button class="order-tab" id="otab-sheet" onclick="switchOrderTab('sheet')">Orders List</button>
+    <div class="page-header">
+      <div class="order-tabs">
+        <button class="order-tab on" id="otab-calendar" onclick="switchOrderTab('calendar')">Calendar</button>
+        <button class="order-tab" id="otab-sheet" onclick="switchOrderTab('sheet')">Orders List</button>
+      </div>
+
+      <!-- CALENDAR HEADER -->
+      <div id="oview-calendar-header">
+        <div class="week-bar">
+          <button class="wbtn" onclick="changeWeek('o',-1)">←</button>
+          <span class="wlabel" id="o-wlabel"></span>
+          <button class="wbtn" onclick="changeWeek('o',1)">→</button>
+          <button class="wbtn today-btn" onclick="goToday('o')">This week</button>
+          <input type="text" id="order-search" class="finput" placeholder="Search by name..." oninput="renderOrders()" style="max-width:220px;padding:5px 10px;font-size:12px;margin-left:4px">
+        </div>
+        <div class="filters">
+          <button class="fbtn on" data-f="all" onclick="setFilter(this)">All</button>
+          <button class="fbtn" data-f="delivery" onclick="setFilter(this)">Delivery</button>
+          <button class="fbtn" data-f="pickup" onclick="setFilter(this)">Pick up</button>
+          <button class="fbtn" data-f="unfulfilled" onclick="setFilter(this)">Unfulfilled</button>
+          <button class="fbtn" data-f="fulfilled" onclick="setFilter(this)">Fulfilled</button>
+          <button class="fbtn" data-f="pending" onclick="setFilter(this)">Pending</button>
+          <button class="fbtn" data-f="delivered" onclick="setFilter(this)">Delivered</button>
+          <button class="fbtn" data-f="custom" onclick="setFilter(this)">Custom date</button>
+          <button class="fbtn" data-f="dismissed" onclick="setFilter(this)">Dismissed recurring</button>
+        </div>
+      </div>
+
+      <!-- SHEET HEADER -->
+      <div id="oview-sheet-header" style="display:none">
+        <div class="week-bar" style="gap:8px">
+          <input type="text" id="sheet-name-filter" class="finput" placeholder="Search by name..." oninput="sheetNameFilter=this.value;renderSheet()" style="max-width:220px;padding:5px 10px;font-size:12px">
+          <select class="finput" style="max-width:160px;padding:5px 10px;font-size:12px" onchange="sheetTimeFilter=this.value;renderSheet()">
+            <option value="current_month">This month</option>
+            <option value="last_month">Last month</option>
+            <option value="next_month">Next month</option>
+            <option value="this_year">This year</option>
+            <option value="all">All time</option>
+          </select>
+        </div>
+        <div class="filters">
+          <button class="fbtn on" data-sf="all" onclick="setSheetFilter(this)">All</button>
+          <button class="fbtn" data-sf="delivery" onclick="setSheetFilter(this)">Delivery</button>
+          <button class="fbtn" data-sf="pickup" onclick="setSheetFilter(this)">Pick up</button>
+          <button class="fbtn" data-sf="unfulfilled" onclick="setSheetFilter(this)">Unfulfilled</button>
+          <button class="fbtn" data-sf="fulfilled" onclick="setSheetFilter(this)">Fulfilled</button>
+          <button class="fbtn" data-sf="pending" onclick="setSheetFilter(this)">Pending</button>
+          <button class="fbtn" data-sf="delivered" onclick="setSheetFilter(this)">Delivered</button>
+        </div>
+      </div>
     </div>
 
-    <!-- CALENDAR VIEW -->
-    <div id="oview-calendar">
-    <div class="week-bar">
-      <button class="wbtn" onclick="changeWeek('o',-1)">←</button>
-      <span class="wlabel" id="o-wlabel"></span>
-      <button class="wbtn" onclick="changeWeek('o',1)">→</button>
-      <button class="wbtn today-btn" onclick="goToday('o')">This week</button>
-    </div>
-    <div class="filters">
-      <button class="fbtn on" data-f="all" onclick="setFilter(this)">All</button>
-      <button class="fbtn" data-f="delivery" onclick="setFilter(this)">Delivery</button>
-      <button class="fbtn" data-f="pickup" onclick="setFilter(this)">Pick up</button>
-      <button class="fbtn" data-f="unfulfilled" onclick="setFilter(this)">Unfulfilled</button>
-      <button class="fbtn" data-f="fulfilled" onclick="setFilter(this)">Fulfilled</button>
-      <button class="fbtn" data-f="pending" onclick="setFilter(this)">Pending</button>
-      <button class="fbtn" data-f="delivered" onclick="setFilter(this)">Delivered</button>
-      <button class="fbtn" data-f="custom" onclick="setFilter(this)">Custom date</button>
-      <button class="fbtn" data-f="dismissed" onclick="setFilter(this)">Dismissed recurring</button>
-    </div>
-    <div style="margin-bottom:10px">
-      <input type="text" id="order-search" class="finput" placeholder="Search by name..." oninput="renderOrders()" style="max-width:280px;padding:6px 10px;font-size:12px">
-    </div>
-    <div class="unalloc-banner" id="unalloc-banner">
-      <span><b id="unalloc-count">0</b> orders with custom date — not yet allocated</span>
-      <button class="btn" onclick="filterCustom()">View them →</button>
-    </div>
-    <div id="rec-inline-section" style="display:none;margin-bottom:16px">
-      <div style="font-size:13px;font-weight:600;color:var(--recurring);margin-bottom:10px">Recurring order suggestions for this week</div>
-      <div id="rec-inline-cards"></div>
-    </div>
-    <div id="orders-body"></div>
-    </div>
+    <div class="page-body">
+      <!-- CALENDAR BODY -->
+      <div id="oview-calendar">
+        <div class="unalloc-banner" id="unalloc-banner">
+          <span><b id="unalloc-count">0</b> orders with custom date — not yet allocated</span>
+          <button class="btn" onclick="filterCustom()">View them →</button>
+        </div>
+        <div id="rec-inline-section" style="display:none;margin-bottom:16px">
+          <div style="font-size:13px;font-weight:600;color:var(--recurring);margin-bottom:10px">Recurring order suggestions for this week</div>
+          <div id="rec-inline-cards"></div>
+        </div>
+        <div id="orders-body"></div>
+      </div>
 
-    <!-- SHEET VIEW -->
-    <div id="oview-sheet" style="display:none">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
-      <input type="text" id="sheet-name-filter" class="finput" placeholder="Search by name..." oninput="sheetNameFilter=this.value;renderSheet()" style="max-width:220px;padding:6px 10px;font-size:12px">
-      <select class="finput" style="max-width:160px;padding:6px 10px;font-size:12px" onchange="sheetTimeFilter=this.value;renderSheet()">
-        <option value="current_month">This month</option>
-        <option value="last_month">Last month</option>
-        <option value="next_month">Next month</option>
-        <option value="this_year">This year</option>
-        <option value="all">All time</option>
-      </select>
-    </div>
-    <div class="filters" style="margin-bottom:12px">
-      <button class="fbtn on" data-sf="all" onclick="setSheetFilter(this)">All</button>
-      <button class="fbtn" data-sf="delivery" onclick="setSheetFilter(this)">Delivery</button>
-      <button class="fbtn" data-sf="pickup" onclick="setSheetFilter(this)">Pick up</button>
-      <button class="fbtn" data-sf="unfulfilled" onclick="setSheetFilter(this)">Unfulfilled</button>
-      <button class="fbtn" data-sf="fulfilled" onclick="setSheetFilter(this)">Fulfilled</button>
-      <button class="fbtn" data-sf="pending" onclick="setSheetFilter(this)">Pending</button>
-      <button class="fbtn" data-sf="delivered" onclick="setSheetFilter(this)">Delivered</button>
-    </div>
-    <div id="sheet-body"></div>
+      <!-- SHEET BODY -->
+      <div id="oview-sheet" style="display:none">
+        <div id="sheet-body"></div>
+      </div>
     </div>
   </div>
 
 
   <!-- PRODUCTION -->
   <div class="page" id="page-prod">
-    <div class="week-bar">
-      <button class="wbtn" onclick="changeWeek('p',-1)">←</button>
-      <span class="wlabel" id="p-wlabel"></span>
-      <button class="wbtn" onclick="changeWeek('p',1)">→</button>
-      <button class="wbtn today-btn" onclick="goToday('p')">This week</button>
-      <select id="prod-shift-filter" onchange="renderProd()" style="margin-left:10px;padding:5px 10px;border:1px solid var(--border-dark);border-radius:7px;font-size:12px;font-family:inherit;background:var(--bg);color:var(--text-1);cursor:pointer">
-        <option value="all">All shifts</option>
-        <option value="morning">Morning</option>
-        <option value="afternoon">Afternoon</option>
-      </select>
-      <select id="prod-type-filter" onchange="renderProd()" style="margin-left:6px;padding:5px 10px;border:1px solid var(--border-dark);border-radius:7px;font-size:12px;font-family:inherit;background:var(--bg);color:var(--text-1);cursor:pointer">
-        <option value="all">All orders</option>
-        <option value="client">Client orders</option>
-        <option value="recurring">Recurring only</option>
-      </select>
+    <div class="page-header">
+      <div class="week-bar">
+        <button class="wbtn" onclick="changeWeek('p',-1)">←</button>
+        <span class="wlabel" id="p-wlabel"></span>
+        <button class="wbtn" onclick="changeWeek('p',1)">→</button>
+        <button class="wbtn today-btn" onclick="goToday('p')">This week</button>
+        <select id="prod-shift-filter" onchange="renderProd()" style="padding:5px 10px;border:1px solid var(--border-dark);border-radius:7px;font-size:12px;font-family:inherit;background:var(--surface);color:var(--text);cursor:pointer">
+          <option value="all">All shifts</option>
+          <option value="morning">Morning</option>
+          <option value="afternoon">Afternoon</option>
+        </select>
+        <select id="prod-type-filter" onchange="renderProd()" style="padding:5px 10px;border:1px solid var(--border-dark);border-radius:7px;font-size:12px;font-family:inherit;background:var(--surface);color:var(--text);cursor:pointer">
+          <option value="all">All orders</option>
+          <option value="client">Client orders</option>
+          <option value="recurring">Recurring only</option>
+        </select>
+      </div>
     </div>
-    <div class="stitle">Presentations to pack</div>
-    <div class="ssub">Tap any number to see the orders</div>
-    <div class="twrap"><table class="stable" id="pres-t"></table></div>
-    <div class="stitle">Units to produce</div>
-    <div class="ssub">Tap any number to see the breakdown</div>
-    <div class="twrap"><table class="stable" id="units-t"></table></div>
+    <div class="page-body">
+      <div class="stitle">Presentations to pack</div>
+      <div class="ssub">Tap any number to see the orders</div>
+      <div class="twrap"><table class="stable" id="pres-t"></table></div>
+      <div class="stitle">Units to produce</div>
+      <div class="ssub">Tap any number to see the breakdown</div>
+      <div class="twrap"><table class="stable" id="units-t"></table></div>
+    </div>
   </div>
 
   <!-- TASKS -->
   <div class="page" id="page-tasks">
-    <div class="week-bar">
-      <button class="wbtn" onclick="changeWeek('t',-1)">←</button>
-      <span class="wlabel" id="t-wlabel"></span>
-      <button class="wbtn" onclick="changeWeek('t',1)">→</button>
-      <button class="wbtn today-btn" onclick="goToday('t')">This week</button>
+    <div class="page-header">
+      <div class="week-bar">
+        <button class="wbtn" onclick="changeWeek('t',-1)">←</button>
+        <span class="wlabel" id="t-wlabel"></span>
+        <button class="wbtn" onclick="changeWeek('t',1)">→</button>
+        <button class="wbtn today-btn" onclick="goToday('t')">This week</button>
+      </div>
     </div>
-    <div id="tasks-body"></div>
+    <div class="page-body" id="tasks-body"></div>
   </div>
 
   <!-- REMINDERS -->
   <div class="page" id="page-rem">
-    <div class="week-bar">
-      <button class="wbtn" onclick="changeWeek('r',-1)">←</button>
-      <span class="wlabel" id="r-wlabel"></span>
-      <button class="wbtn" onclick="changeWeek('r',1)">→</button>
-      <button class="wbtn today-btn" onclick="goToday('r')">This week</button>
+    <div class="page-header">
+      <div class="week-bar">
+        <button class="wbtn" onclick="changeWeek('r',-1)">←</button>
+        <span class="wlabel" id="r-wlabel"></span>
+        <button class="wbtn" onclick="changeWeek('r',1)">→</button>
+        <button class="wbtn today-btn" onclick="goToday('r')">This week</button>
+      </div>
     </div>
-    <div class="defbox">
-      <div class="deflabel">Default reminder message</div>
-      <textarea id="def-msg" class="msginp" rows="3">Hi {name}! Just a reminder from Di Blu Bakery :) Your order {order} will be {type} on {date} in the {shift}. Can't wait for you to enjoy it!</textarea>
-      <div style="font-size:11px;color:var(--text-3);margin-top:5px">Variables: {name} {order} {date} {shift} {type} {items} &nbsp;·&nbsp; <a href="#" onclick="apiSaveSettings('reminder_msg','flash-rem');return false;" style="color:var(--accent);font-weight:600">Save template</a> <span id="flash-rem" style="display:none;color:var(--green);font-weight:600">&#10003; Saved!</span></div>
+    <div class="page-body">
+      <div class="defbox">
+        <div class="deflabel">Default reminder message</div>
+        <textarea id="def-msg" class="msginp" rows="3">Hi {name}! Just a reminder from Di Blu Bakery :) Your order {order} will be {type} on {date} in the {shift}. Can't wait for you to enjoy it!</textarea>
+        <div style="font-size:11px;color:var(--text-3);margin-top:5px">Variables: {name} {order} {date} {shift} {type} {items} &nbsp;·&nbsp; <a href="#" onclick="apiSaveSettings('reminder_msg','flash-rem');return false;" style="color:var(--accent);font-weight:600">Save template</a> <span id="flash-rem" style="display:none;color:var(--green);font-weight:600">&#10003; Saved!</span></div>
+      </div>
+      <div class="bulkbar">
+        <span style="font-size:12px;font-weight:500;color:var(--text-2)"><span id="rem-n">0</span> selected</span>
+        <button class="gbtn" id="bulk-btn" disabled onclick="sendBatch()">Send WhatsApp reminders</button>
+      </div>
+      <div id="rem-body"></div>
     </div>
-    <div class="bulkbar">
-      <span style="font-size:12px;font-weight:500;color:var(--text-2)"><span id="rem-n">0</span> selected</span>
-      <button class="gbtn" id="bulk-btn" disabled onclick="sendBatch()">Send WhatsApp reminders</button>
-    </div>
-    <div id="rem-body"></div>
   </div>
 
   <!-- FEEDBACK -->
   <div class="page" id="page-feedback">
-    <div style="margin-bottom:16px">
-      <div style="font-size:14px;font-weight:700;margin-bottom:4px">Feedback messages</div>
-      <div style="font-size:12px;color:var(--text-2)">Send a quick follow-up to delivered orders. Select who you want to reach out to.</div>
+    <div class="page-header">
+      <div class="week-bar">
+        <button class="wbtn" onclick="changeWeek('fb',-1)">←</button>
+        <span class="wlabel" id="fb-wlabel"></span>
+        <button class="wbtn" onclick="changeWeek('fb',1)">→</button>
+        <button class="wbtn today-btn" onclick="goToday('fb')">This week</button>
+      </div>
     </div>
-    <div class="week-bar">
-      <button class="wbtn" onclick="changeWeek('fb',-1)">←</button>
-      <span class="wlabel" id="fb-wlabel"></span>
-      <button class="wbtn" onclick="changeWeek('fb',1)">→</button>
-      <button class="wbtn today-btn" onclick="goToday('fb')">This week</button>
+    <div class="page-body">
+      <div style="margin-bottom:12px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:4px">Feedback messages</div>
+        <div style="font-size:12px;color:var(--text-2)">Send a quick follow-up to delivered orders. Select who you want to reach out to.</div>
+      </div>
+      <div class="defbox">
+        <div class="deflabel">Feedback message template</div>
+        <textarea id="fb-msg" class="msginp" rows="2">Hi {name}! Hope you loved your Di Blu order We'd love to hear how everything was!</textarea>
+        <div style="font-size:11px;color:var(--text-3);margin-top:5px">Variables: {name} {order} {items} &nbsp;·&nbsp; <a href="#" onclick="apiSaveSettings('feedback_msg','flash-fb');return false;" style="color:var(--accent);font-weight:600">Save template</a> <span id="flash-fb" style="display:none;color:var(--green);font-weight:600">&#10003; Saved!</span></div>
+      </div>
+      <div class="bulkbar">
+        <span style="font-size:12px;font-weight:500;color:var(--text-2)"><span id="fb-n">0</span> selected</span>
+        <button class="gbtn" id="fb-bulk-btn" disabled onclick="sendFbBatch()">Send feedback messages</button>
+      </div>
+      <div id="feedback-body"></div>
     </div>
-    <div class="defbox">
-      <div class="deflabel">Feedback message template</div>
-      <textarea id="fb-msg" class="msginp" rows="2">Hi {name}! Hope you loved your Di Blu order We'd love to hear how everything was!</textarea>
-      <div style="font-size:11px;color:var(--text-3);margin-top:5px">Variables: {name} {order} {items} &nbsp;·&nbsp; <a href="#" onclick="apiSaveSettings('feedback_msg','flash-fb');return false;" style="color:var(--accent);font-weight:600">Save template</a> <span id="flash-fb" style="display:none;color:var(--green);font-weight:600">&#10003; Saved!</span></div>
-    </div>
-    <div class="bulkbar">
-      <span style="font-size:12px;font-weight:500;color:var(--text-2)"><span id="fb-n">0</span> selected</span>
-      <button class="gbtn" id="fb-bulk-btn" disabled onclick="sendFbBatch()">Send feedback messages</button>
-    </div>
-    <div id="feedback-body"></div>
   </div>
 
   <!-- RECURRING ORDERS -->
   <div class="page" id="page-recurring">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-      <div>
-        <div style="font-size:14px;font-weight:700;margin-bottom:3px">Recurring orders</div>
-        <div style="font-size:12px;color:var(--text-2)">These repeat weekly. Activate each week from the suggestion that appears in Orders.</div>
+    <div class="page-header">
+      <div class="week-bar" style="justify-content:space-between">
+        <div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:2px">Recurring orders</div>
+          <div style="font-size:12px;color:var(--text-2)">These repeat weekly. Activate each week from Orders.</div>
+        </div>
+        <button class="btn accent" onclick="openNewRecurring()">+ add recurring</button>
       </div>
-      <button class="btn accent" onclick="openNewRecurring()">+ add recurring</button>
     </div>
-    <div style="font-size:13px;font-weight:600;margin-bottom:10px">All recurring orders</div>
-    <div id="rec-list"></div>
+    <div class="page-body" id="rec-list"></div>
   </div>
 
   <!-- ADMIN -->
   <div class="page" id="page-admin">
-    <!-- Admin tabs -->
-    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:18px;background:var(--surface);border-radius:10px 10px 0 0;overflow:hidden">
-      <button class="admin-tab on" id="atab-base" onclick="switchAdminTab('base')">🥐 Base products</button>
-      <button class="admin-tab" id="atab-pres" onclick="switchAdminTab('pres')">📦 Presentations &amp; combos</button>
-      <button class="admin-tab" id="atab-team" onclick="switchAdminTab('team')">👥 Team</button>
+    <div class="page-header">
+      <div style="display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);border-radius:10px 10px 0 0;overflow:hidden;margin:0 -24px;padding:0 24px;">
+        <button class="admin-tab on" id="atab-base" onclick="switchAdminTab('base')">🥐 Base products</button>
+        <button class="admin-tab" id="atab-pres" onclick="switchAdminTab('pres')">📦 Presentations &amp; combos</button>
+        <button class="admin-tab" id="atab-team" onclick="switchAdminTab('team')">👥 Team</button>
+      </div>
     </div>
-    <div id="admin-base"></div>
-    <div id="admin-pres" style="display:none"></div>
-    <div id="admin-team" style="display:none"></div>
+    <div class="page-body">
+      <div id="admin-base"></div>
+      <div id="admin-pres" style="display:none"></div>
+      <div id="admin-team" style="display:none"></div>
+    </div>
   </div>
 
   <!-- NEW ORDER -->
   <div class="page" id="page-new">
-    <div class="form-card">
-      <div class="form-title">New order</div>
-      <div class="form-g2">
-        <div><div class="flabel">First name</div><input class="finput" type="text" id="no-first" placeholder="Jane"></div>
-        <div><div class="flabel">Last name</div><input class="finput" type="text" id="no-last" placeholder="Smith"></div>
-      </div>
-      <div class="form-g2">
-        <div><div class="flabel">WhatsApp</div><input class="finput" type="text" id="no-phone" placeholder="+1 201..."></div>
-        <div><div class="flabel">Wix order #</div><input class="finput" type="text" id="no-wix" placeholder="#1099"></div>
-      </div>
-      <div class="form-g3">
-        <div><div class="flabel">Date</div><input class="finput" type="date" id="no-date"></div>
-        <div><div class="flabel">Shift</div><select class="finput" id="no-shift"><option value="morning">Morning</option><option value="afternoon">Afternoon</option></select></div>
-        <div><div class="flabel">Type</div><select class="finput" id="no-type"><option value="pickup">Pick up</option><option value="delivery">Delivery</option></select></div>
-      </div>
-      <div style="margin-bottom:12px">
-        <div class="flabel" style="margin-bottom:5px">Products</div>
-        <div id="new-items"></div>
-        <button class="add-btn" onclick="addRow()">+ add product</button>
-      </div>
-      <div style="margin-bottom:16px"><div class="flabel">Notes</div><input class="finput" type="text" id="no-notes" placeholder="e.g. no nuts, birthday note..."></div>
-      <div class="form-actions">
-        <button class="btn" onclick="showPage('orders')">Cancel</button>
-        <button class="btn accent" onclick="saveNewOrder()">Save order</button>
+    <div class="page-body">
+      <div class="form-card">
+        <div class="form-title">New order</div>
+        <div class="form-g2">
+          <div><div class="flabel">First name</div><input class="finput" type="text" id="no-first" placeholder="Jane"></div>
+          <div><div class="flabel">Last name</div><input class="finput" type="text" id="no-last" placeholder="Smith"></div>
+        </div>
+        <div class="form-g2">
+          <div><div class="flabel">WhatsApp</div><input class="finput" type="text" id="no-phone" placeholder="+1 201..."></div>
+          <div><div class="flabel">Wix order #</div><input class="finput" type="text" id="no-wix" placeholder="#1099"></div>
+        </div>
+        <div class="form-g3">
+          <div><div class="flabel">Date</div><input class="finput" type="date" id="no-date"></div>
+          <div><div class="flabel">Shift</div><select class="finput" id="no-shift"><option value="morning">Morning</option><option value="afternoon">Afternoon</option></select></div>
+          <div><div class="flabel">Type</div><select class="finput" id="no-type"><option value="pickup">Pick up</option><option value="delivery">Delivery</option></select></div>
+        </div>
+        <div style="margin-bottom:12px">
+          <div class="flabel" style="margin-bottom:5px">Products</div>
+          <div id="new-items"></div>
+          <button class="add-btn" onclick="addRow()">+ add product</button>
+        </div>
+        <div style="margin-bottom:16px"><div class="flabel">Notes</div><input class="finput" type="text" id="no-notes" placeholder="e.g. no nuts, birthday note..."></div>
+        <div class="form-actions">
+          <button class="btn" onclick="showPage('orders')">Cancel</button>
+          <button class="btn accent" onclick="saveNewOrder()">Save order</button>
+        </div>
       </div>
     </div>
   </div>
@@ -562,6 +594,12 @@ async function apiFetch(path, options){
   opts.headers = opts.headers || {};
   if(API_TOKEN) opts.headers['Authorization'] = 'Bearer ' + API_TOKEN;
   opts.headers['Content-Type'] = 'application/json';
+  // Bust browser cache on GET requests
+  if(!opts.method || opts.method === 'GET'){
+    opts.cache = 'no-store';
+    var sep = path.indexOf('?') >= 0 ? '&' : '?';
+    path = path + sep + '_=' + Date.now();
+  }
   var res = await fetch(path, opts);
   if(!res.ok){
     var err = await res.json().catch(function(){return {};});
@@ -818,6 +856,8 @@ function switchViewAs(v){
   var isAdmin=previewRole==='admin';
   document.getElementById('nav-section-mgmt').style.display=isAdmin?'':'none';
   document.getElementById('nav-admin').style.display=isAdmin?'':'none';
+  document.getElementById('nav-recurring').style.display=isAdmin?'':'none';
+  if(!isAdmin&&document.getElementById('page-recurring').classList.contains('on'))showPage('orders');
   currentRole=previewRole;
   renderAll();
 }
@@ -831,12 +871,12 @@ function doLogout(){
 }
 
 function switchRole(r){
-  // kept for internal use only — not exposed to UI
   currentRole=r;
   var isAdmin=r==='admin';
   document.getElementById('nav-section-mgmt').style.display=isAdmin?'':'none';
   document.getElementById('nav-admin').style.display=isAdmin?'':'none';
-  if(!isAdmin&&document.getElementById('page-admin').classList.contains('on'))showPage('orders');
+  document.getElementById('nav-recurring').style.display=isAdmin?'':'none';
+  if(!isAdmin&&document.getElementById('page-recurring').classList.contains('on'))showPage('orders');
   renderAll();
 }
 
@@ -1532,6 +1572,8 @@ var sheetSortDir=-1; // -1=desc, 1=asc
 function switchOrderTab(tab){
   document.getElementById('oview-calendar').style.display=tab==='calendar'?'':'none';
   document.getElementById('oview-sheet').style.display=tab==='sheet'?'':'none';
+  document.getElementById('oview-calendar-header').style.display=tab==='calendar'?'':'none';
+  document.getElementById('oview-sheet-header').style.display=tab==='sheet'?'':'none';
   document.getElementById('otab-calendar').className='order-tab'+(tab==='calendar'?' on':'');
   document.getElementById('otab-sheet').className='order-tab'+(tab==='sheet'?' on':'');
   if(tab==='sheet')renderSheet();
@@ -2188,7 +2230,7 @@ function addRow(){
   c.appendChild(r);
 }
 
-function renderAll(){renderOrders();updateTasksBadge();updateAdminBadge();}
+function renderAll(){renderOrders();renderProd();updateTasksBadge();updateAdminBadge();}
 function updateTasksBadge(){var n=TASKS.filter(function(t){return!t.done;}).length;document.getElementById('tasks-badge').textContent=n;}
 function getUnconfigured(){return Object.keys(PRODS).filter(function(name){var u=PRODS[name].u;return !u||Object.keys(u).length===0;});}
 function updateAdminBadge(){
