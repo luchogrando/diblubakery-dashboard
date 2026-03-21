@@ -996,7 +996,7 @@ function renderOrders(){
       rHtml+='<div class="card recurring-card">';
       rHtml+='<div class="card-name">'+esc(r.name)+'</div>';
       rHtml+='<div class="card-wix">Recurring \u00b7 every '+dayNames[r.dayOfWeek]+'</div>';
-      rHtml+='<div class="card-tags"><span class="tag t-recurring">recurring</span><span class="tag '+(r.shift==='morning'?'t-pend':'t-del')+'">'+cap(r.shift)+'</span><span class="tag '+(r.type==='delivery'?'t-del':'t-pu')+'">'+cap(r.type)+'</span></div>';
+      rHtml+='<div class="card-tags"><span class="tag t-recurring">Recurring</span><span class="tag '+(r.shift==='morning'?'t-pend':'t-del')+'">'+cap(r.shift)+'</span><span class="tag '+(r.type==='delivery'?'t-del':'t-pu')+'">'+cap(r.type)+'</span></div>';
       rHtml+='<div class="card-items">'+r.items.map(function(i){var displayName=PRODS[i.p]?i.p:(BASE_PRODUCTS[i.p]?BASE_PRODUCTS[i.p].name:i.p);return '<div class="card-item"><span>'+esc(displayName)+'</span><span>\u00d7'+i.q+'</span></div>';}).join('')+'</div>';
       rHtml+='<div style="display:flex;gap:6px;margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
       rHtml+='<button class="btn accent" style="flex:1;font-size:11px;padding:5px" onclick="activateRecurring('+r.id+')">Activate this week</button>';
@@ -1050,7 +1050,7 @@ function renderOrders(){
         html2+='<div class="card recurring-card">';
         html2+='<div class="card-name">'+esc(r.name)+'</div>';
         html2+='<div class="card-wix">Recurring · every '+dayNames[r.dayOfWeek]+'</div>';
-        html2+='<div class="card-tags"><span class="tag t-recurring">recurring</span></div>';
+        html2+='<div class="card-tags"><span class="tag t-recurring">Recurring</span></div>';
         html2+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
         html2+='<button class="btn accent" style="font-size:11px;padding:5px 12px" onclick="undoDismiss('+r.id+',\''+dateKey+'\')">Undo dismiss</button>';
         html2+='</div></div>';
@@ -1119,8 +1119,8 @@ function renderCard(o){
   h+='<span class="tag '+(o.type==='delivery'?'t-del':'t-pu')+'">'+cap(o.type)+'</span>';
   h+='<span class="tag '+(o.fulfillment==='fulfilled'?'t-ful':'t-unf')+'">'+cap(o.fulfillment)+'</span>';
   h+='<span class="tag '+(o.delivery==='delivered'?'t-deliv':'t-pend')+'">'+cap(o.delivery)+'</span>';
-  if(o.recurring)h+='<span class="tag t-recurring">recurring</span>';
-  if(o.customDate&&!o.date)h+='<span class="tag t-custom">custom date</span>';
+  if(o.recurring)h+='<span class="tag t-recurring">Recurring</span>';
+  if(o.customDate&&!o.date)h+='<span class="tag t-custom">Custom date</span>';
   h+='</div>';
   h+='<div class="card-items">'+o.items.map(function(i){return '<div class="card-item"><span>'+esc(resolveItemName(i.p))+'</span><span>\u00d7'+i.q+'</span></div>';}).join('')+'</div>';
   if(o.edited)h+='<div class="card-edit-flag">\u270f edited by '+esc(o.editedBy)+'</div>';
@@ -1134,7 +1134,7 @@ function openModal(id){
   o.items.forEach(function(it){var pr=PRODS[it.p];if(!pr)return;Object.keys(pr.u).forEach(function(u){uT[u]=(uT[u]||0)+pr.u[u]*it.q;});});
   var dateDisplay=o.date?fmtS(new Date(o.date+'T12:00')):'Not set';
   var shiftDisplay=o.shift?(o.shift.charAt(0).toUpperCase()+o.shift.slice(1)):'Not set';
-  var h='<div class="mtitle"><div><div>'+esc(o.name)+'</div><div style="font-size:11px;color:var(--text-3);font-weight:400;margin-top:2px">Wix '+esc(o.wix)+(o.recurring?' \u00b7 <span class="tag t-recurring">recurring</span>':'')+'</div></div><button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
+  var h='<div class="mtitle"><div><div>'+esc(o.name)+'</div><div style="font-size:11px;color:var(--text-3);font-weight:400;margin-top:2px">Wix '+esc(o.wix)+(o.recurring?' \u00b7 <span class="tag t-recurring">Recurring</span>':'')+'</div></div><button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
   if(o.edited)h+='<div style="font-size:11px;background:#fff0c0;border-radius:6px;padding:6px 10px;margin-bottom:10px;color:#7a5c00">\u270f Last edited by <b>'+esc(o.editedBy)+'</b></div>';
   h+='<div class="mrow"><span class="ml">Date</span><span class="mr">'+dateDisplay+'</span></div>';
   h+='<div class="mrow"><span class="ml">Shift</span><span class="mr">'+shiftDisplay+'</span></div>';
@@ -1383,7 +1383,7 @@ function showPresPopup(e,day,pres){
   var h='<div class="mtitle">'+title+'<button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
   h+='<div class="msec">Orders</div>';
   orders.forEach(function(r){
-    var tag=r.recurring?'<span style="font-size:10px;color:var(--recurring);font-weight:600;margin-left:5px">recurring</span>':'';
+    var tag=r.recurring?'<span style="font-size:10px;color:var(--recurring);font-weight:600;margin-left:5px">Recurring</span>':'';
     h+='<div class="mrow"><span class="ml">'+esc(r.name)+' '+esc(r.wix)+tag+'</span><span class="mr" style="font-weight:700">\u00d7'+r.q+'</span></div>';
   });
   h+='<div style="display:flex;justify-content:space-between;padding:10px 0 0;margin-top:6px;border-top:1px solid var(--border);font-size:14px;font-weight:700"><span>Total</span><span style="color:var(--accent)">'+total+'</span></div>';
@@ -1409,7 +1409,7 @@ function showPopup(e,day,unit){
   if(fromPres.length){
     h+='<div class="msec">From presentations</div>';
     fromPres.forEach(function(v){
-      var tag=v.recurring?'<span style="font-size:10px;color:var(--recurring);font-weight:600;margin-left:5px">recurring</span>':'';
+      var tag=v.recurring?'<span style="font-size:10px;color:var(--recurring);font-weight:600;margin-left:5px">Recurring</span>':'';
       h+='<div class="mrow"><span class="ml">'+esc(v.p)+tag+' \u00d7'+v.boxQ+'</span><span class="mr" style="font-weight:700">'+v.n+' units</span></div>';
     });
   }
@@ -1649,7 +1649,7 @@ function renderSheet(){
   var sortable=['name','wix','date','fulfillment','delivery','total'];
 
   var html='<div class="sheet-table-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">';
-  html+='<colgroup><col style="width:148px"><col style="width:110px"><col style="width:95px"><col style="width:80px"><col style="width:75px"><col style="width:177px"><col style="width:105px"><col style="width:90px"><col style="width:70px"></colgroup>';
+  html+='<colgroup><col style="width:133px"><col style="width:110px"><col style="width:95px"><col style="width:80px"><col style="width:75px"><col style="width:192px"><col style="width:105px"><col style="width:90px"><col style="width:70px"></colgroup>';
   html+='<thead><tr style="border-bottom:2px solid var(--border)">';
   cols.forEach(function(c){
     var canSort=sortable.indexOf(c.key)>=0;
