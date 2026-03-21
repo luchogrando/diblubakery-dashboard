@@ -53,7 +53,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .btn.red{background:var(--red);color:#fff;border-color:var(--red);}
 .btn.red:hover{background:#6a1010;}
 .btn:disabled{opacity:.3;cursor:not-allowed;}
-.week-bar{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.week-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;position:sticky;top:53px;z-index:20;background:var(--bg);padding:10px 0;margin-bottom:8px;border-bottom:1px solid var(--border);}
 .wbtn{padding:6px 14px;border:1px solid var(--border-dark);border-radius:7px;background:var(--surface);cursor:pointer;font-size:13px;font-weight:700;color:var(--text);transition:all .15s;}
 .wbtn:hover{background:var(--bg);}
 .wbtn.today-btn{border-color:var(--accent);color:var(--accent);font-size:11px;padding:5px 11px;}
@@ -68,7 +68,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .t-custom{background:var(--purple-light);color:var(--purple);}
 .t-edited{background:#fff0c0;color:#7a5c00;}
 .t-recurring{background:var(--recurring-light);color:var(--recurring);}
-.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;position:sticky;top:106px;z-index:19;background:var(--bg);padding:8px 0;}
 .fbtn{padding:5px 13px;border:1px solid var(--border-dark);border-radius:99px;background:var(--surface);cursor:pointer;font-size:12px;font-weight:500;color:var(--text-2);transition:all .15s;}
 .fbtn:hover{border-color:#aaa;color:var(--text);}
 .fbtn.on{background:var(--accent);color:#fff;border-color:var(--accent);}
@@ -82,7 +82,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .no-orders{font-size:12px;color:var(--text-3);padding:5px 2px 7px;font-style:italic;}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 13px;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
-.order-tabs{display:flex;gap:0;margin-bottom:14px;border-bottom:2px solid var(--border);}
+.order-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);position:sticky;top:53px;z-index:21;background:var(--bg);margin-bottom:0;}
 .order-tab{padding:8px 18px;font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;}
 .order-tab.on{color:var(--accent);border-bottom-color:var(--accent);}
 .sheet-table-wrap{overflow-x:auto;max-height:calc(100vh - 280px);overflow-y:auto;}
@@ -793,7 +793,7 @@ async function doLogin(){
   // hide/show nav based on role
   document.getElementById('nav-section-mgmt').style.display=isAdmin?'':'none';
   document.getElementById('nav-admin').style.display=isAdmin?'':'none';
-  document.getElementById('nav-recurring').style.display='';
+  document.getElementById('nav-recurring').style.display=isAdmin?'':'none';
   // hide login, show app
   document.getElementById('login-screen').style.display='none';
   // load config (products/presentations) then orders, tasks, recurring
