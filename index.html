@@ -371,6 +371,7 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
             <option value="this_year">This year</option>
             <option value="all">All time</option>
           </select>
+          <button class="btn" onclick="downloadSheetCSV()" style="font-size:11px;padding:4px 11px;margin-left:auto">⬇ Export CSV</button>
         </div>
         <div class="filters">
           <button class="fbtn on" data-sf="all" onclick="setSheetFilter(this)">All</button>
@@ -932,6 +933,7 @@ function weekDates(off){var s=addDays(WEEK0,off*7);return Array.from({length:7},
 function fmtS(d){return DN[d.getDay()]+' '+d.getDate()+' '+MN[d.getMonth()];}
 function fmtWeek(off){var w=weekDates(off);return fmtS(w[0])+' \u2013 '+fmtS(w[6]);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function cap(s){var v=String(s||"");return v.charAt(0).toUpperCase()+v.slice(1);}
 function goToday(ctx){
   if(ctx==='o')oW=0;else if(ctx==='p')pW=0;else if(ctx==='t')tW=0;else if(ctx==='r')rW=0;else if(ctx==='fb')fbW=0;
   if(ctx==='o')renderOrders();else if(ctx==='p')renderProd();else if(ctx==='t')renderTasks();else if(ctx==='fb')renderFeedback();else renderRem();
@@ -994,7 +996,7 @@ function renderOrders(){
       rHtml+='<div class="card recurring-card">';
       rHtml+='<div class="card-name">'+esc(r.name)+'</div>';
       rHtml+='<div class="card-wix">Recurring \u00b7 every '+dayNames[r.dayOfWeek]+'</div>';
-      rHtml+='<div class="card-tags"><span class="tag t-recurring">recurring</span><span class="tag '+(r.shift==='morning'?'t-pend':'t-del')+'">'+r.shift+'</span><span class="tag '+(r.type==='delivery'?'t-del':'t-pu')+'">'+r.type+'</span></div>';
+      rHtml+='<div class="card-tags"><span class="tag t-recurring">recurring</span><span class="tag '+(r.shift==='morning'?'t-pend':'t-del')+'">'+cap(r.shift)+'</span><span class="tag '+(r.type==='delivery'?'t-del':'t-pu')+'">'+cap(r.type)+'</span></div>';
       rHtml+='<div class="card-items">'+r.items.map(function(i){var displayName=PRODS[i.p]?i.p:(BASE_PRODUCTS[i.p]?BASE_PRODUCTS[i.p].name:i.p);return '<div class="card-item"><span>'+esc(displayName)+'</span><span>\u00d7'+i.q+'</span></div>';}).join('')+'</div>';
       rHtml+='<div style="display:flex;gap:6px;margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
       rHtml+='<button class="btn accent" style="flex:1;font-size:11px;padding:5px" onclick="activateRecurring('+r.id+')">Activate this week</button>';
@@ -1114,9 +1116,9 @@ function renderCard(o){
   h+='</div>';
   h+='<div class="card-wix">Wix '+esc(o.wix)+'</div>';
   h+='<div class="card-tags">';
-  h+='<span class="tag '+(o.type==='delivery'?'t-del':'t-pu')+'">'+o.type+'</span>';
-  h+='<span class="tag '+(o.fulfillment==='fulfilled'?'t-ful':'t-unf')+'">'+o.fulfillment+'</span>';
-  h+='<span class="tag '+(o.delivery==='delivered'?'t-deliv':'t-pend')+'">'+o.delivery+'</span>';
+  h+='<span class="tag '+(o.type==='delivery'?'t-del':'t-pu')+'">'+cap(o.type)+'</span>';
+  h+='<span class="tag '+(o.fulfillment==='fulfilled'?'t-ful':'t-unf')+'">'+cap(o.fulfillment)+'</span>';
+  h+='<span class="tag '+(o.delivery==='delivered'?'t-deliv':'t-pend')+'">'+cap(o.delivery)+'</span>';
   if(o.recurring)h+='<span class="tag t-recurring">recurring</span>';
   if(o.customDate&&!o.date)h+='<span class="tag t-custom">custom date</span>';
   h+='</div>';
@@ -1137,9 +1139,9 @@ function openModal(id){
   h+='<div class="mrow"><span class="ml">Date</span><span class="mr">'+dateDisplay+'</span></div>';
   h+='<div class="mrow"><span class="ml">Shift</span><span class="mr">'+shiftDisplay+'</span></div>';
   h+='<div class="mrow" style="flex-direction:column;align-items:flex-start;gap:6px"><span class="ml">Change date / shift</span><div class="inline-edit"><input type="date" id="ed-'+id+'" value="'+(o.date||'')+'"><select id="es-'+id+'"><option value="morning"'+(o.shift==='morning'?' selected':'')+'>Morning</option><option value="afternoon"'+(o.shift==='afternoon'?' selected':'')+'>Afternoon</option></select><button onclick="saveDateTime('+id+')">Save</button></div></div>';
-  h+='<div class="mrow"><span class="ml">Type</span><span class="mr">'+o.type+'</span></div>';
-  h+='<div class="mrow"><span class="ml">Fulfillment</span><span class="mr"><span class="tag '+(o.fulfillment==='fulfilled'?'t-ful':'t-unf')+'">'+o.fulfillment+'</span></span></div>';
-  h+='<div class="mrow"><span class="ml">Delivery</span><span class="mr"><span class="tag '+(o.delivery==='delivered'?'t-deliv':'t-pend')+'">'+o.delivery+'</span></span></div>';
+  h+='<div class="mrow"><span class="ml">Type</span><span class="mr">'+cap(o.type)+'</span></div>';
+  h+='<div class="mrow"><span class="ml">Fulfillment</span><span class="mr"><span class="tag '+(o.fulfillment==='fulfilled'?'t-ful':'t-unf')+'">'+cap(o.fulfillment)+'</span></span></div>';
+  h+='<div class="mrow"><span class="ml">Delivery</span><span class="mr"><span class="tag '+(o.delivery==='delivered'?'t-deliv':'t-pend')+'">'+cap(o.delivery)+'</span></span></div>';
   if(o.notes)h+='<div class="mrow"><span class="ml">Notes</span><span class="mr" style="color:var(--text-2)">'+esc(o.notes)+'</span></div>';
   h+='<div class="mrow"><span class="ml">Phone</span><span class="mr" style="color:var(--blue)">'+esc(o.phone)+'</span></div>';
   h+='<div class="msec">Products ordered</div>';
@@ -1488,7 +1490,7 @@ function renderRem(){
     html+='<div class="rcard" style="'+(sent?'opacity:0.5;pointer-events:none;background:var(--bg)':'')+'"><div class="rtop">';
     html+='<div class="rchk'+(on?' on':'')+'" onclick="toggleRem('+o.id+')">'+(on?'&#x2713;':'')+'</div>';
     html+='<div class="rinfo"><div class="rname">'+esc(o.name)+'</div><div class="rord">Wix '+esc(o.wix)+'</div>';
-    html+='<div class="rsub">'+d+(o.shift?' \u00b7 '+o.shift:'')+' \u00b7 '+o.type+'</div>';
+    html+='<div class="rsub">'+d+(o.shift?' \u00b7 '+cap(o.shift):'')+' \u00b7 '+cap(o.type)+'</div>';
     if(editing){html+='<textarea id="re'+o.id+'" class="msginp" rows="3" style="margin-top:8px">'+esc(msg)+'</textarea><div style="display:flex;gap:7px;margin-top:6px"><button class="sbtn" onclick="saveEdit('+o.id+')">Save</button><button class="ebtn" onclick="cancelEdit('+o.id+')">Cancel</button></div>';}
     else{html+='<div class="rmsgbox" onclick="openEdit('+o.id+')">'+esc(msg)+'</div>';}
     html+='</div></div>';
@@ -1647,7 +1649,7 @@ function renderSheet(){
   var sortable=['name','wix','date','fulfillment','delivery','total'];
 
   var html='<div class="sheet-table-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">';
-  html+='<colgroup><col style="width:165px"><col style="width:110px"><col style="width:95px"><col style="width:80px"><col style="width:75px"><col style="width:160px"><col style="width:105px"><col style="width:90px"><col style="width:70px"></colgroup>';
+  html+='<colgroup><col style="width:148px"><col style="width:110px"><col style="width:95px"><col style="width:80px"><col style="width:75px"><col style="width:177px"><col style="width:105px"><col style="width:90px"><col style="width:70px"></colgroup>';
   html+='<thead><tr style="border-bottom:2px solid var(--border)">';
   cols.forEach(function(c){
     var canSort=sortable.indexOf(c.key)>=0;
@@ -1663,17 +1665,17 @@ function renderSheet(){
     html+='<td style="padding:7px 10px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(o.name)+'</td>';
     html+='<td style="padding:7px 10px;color:var(--text-2);font-family:monospace;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(o.wix)+'</td>';
     html+='<td style="padding:7px 10px;white-space:nowrap">'+(o.date?fmtS(new Date(o.date+'T12:00')):'—')+'</td>';
-    html+='<td style="padding:7px 10px;white-space:nowrap">'+esc(o.shift||'—')+'</td>';
-    html+='<td style="padding:7px 10px;white-space:nowrap">'+esc(o.type||'—')+'</td>';
+    html+='<td style="padding:7px 10px;white-space:nowrap">'+cap(o.shift||'—')+'</td>';
+    html+='<td style="padding:7px 10px;white-space:nowrap">'+cap(o.type||'—')+'</td>';
     html+='<td style="padding:7px 10px;font-size:11px">'+o.items.map(function(x){
       var name=esc(resolveItemName(x.p));
-      return '<div style="display:flex;align-items:baseline;gap:0;white-space:nowrap;overflow:hidden">'
-        +'<span style="overflow:hidden;text-overflow:clip;flex:1;border-bottom:1.5px dotted var(--border-dark);margin-bottom:2px;line-height:1.6">'+name+'</span>'
-        +'<span style="flex-shrink:0;color:var(--text-2);padding-left:4px">\u00d7'+x.q+'</span>'
+      return '<div style="display:flex;justify-content:space-between;gap:8px;white-space:nowrap">'
+        +'<span style="overflow:hidden;text-overflow:ellipsis">'+name+'</span>'
+        +'<span style="flex-shrink:0;color:var(--text-2)">\u00d7'+x.q+'</span>'
         +'</div>';
     }).join('')+'</td>';
-    html+='<td style="padding:7px 10px"><span class="tag '+(o.fulfillment==='fulfilled'?'t-ful':'t-unf')+'">'+esc(o.fulfillment)+'</span></td>';
-    html+='<td style="padding:7px 10px"><span class="tag '+(o.delivery==='delivered'?'t-del':'t-pend')+'">'+esc(o.delivery)+'</span></td>';
+    html+='<td style="padding:7px 10px"><span class="tag '+(o.fulfillment==='fulfilled'?'t-ful':'t-unf')+'">'+cap(o.fulfillment)+'</span></td>';
+    html+='<td style="padding:7px 10px"><span class="tag '+(o.delivery==='delivered'?'t-del':'t-pend')+'">'+cap(o.delivery)+'</span></td>';
     html+='<td style="padding:7px 10px">'+(o.total?'$'+o.total:'—')+'</td>';
     html+='</tr>';
   });
@@ -1683,6 +1685,54 @@ function renderSheet(){
   document.getElementById('sheet-body').innerHTML=html;
 }
 
+function downloadSheetCSV(){
+  // Build the same filtered list as renderSheet
+  var nameQ=(sheetNameFilter||'').toLowerCase().trim();
+  var now=new Date();
+  var filtered=ORDERS.filter(function(o){
+    if(nameQ&&o.name.toLowerCase().indexOf(nameQ)<0)return false;
+    if(sheetTypeFilter==='delivery'&&o.type!=='delivery')return false;
+    if(sheetTypeFilter==='pickup'&&o.type!=='pickup')return false;
+    if(sheetTypeFilter==='unfulfilled'&&o.fulfillment!=='unfulfilled')return false;
+    if(sheetTypeFilter==='fulfilled'&&o.fulfillment!=='fulfilled')return false;
+    if(sheetTypeFilter==='pending'&&o.delivery!=='pending')return false;
+    if(sheetTypeFilter==='delivered'&&o.delivery!=='delivered')return false;
+    if(!o.date)return sheetTimeFilter==='all';
+    var d=new Date(o.date+'T12:00');
+    var y=d.getFullYear(),m=d.getMonth();
+    var ny=now.getFullYear(),nm=now.getMonth();
+    if(sheetTimeFilter==='current_month')return y===ny&&m===nm;
+    if(sheetTimeFilter==='last_month'){var lm=nm===0?11:nm-1,ly=nm===0?ny-1:ny;return y===ly&&m===lm;}
+    if(sheetTimeFilter==='next_month'){var xm=(nm+1)%12,xy=nm===11?ny+1:ny;return y===xy&&m===xm;}
+    if(sheetTimeFilter==='this_year')return y===ny;
+    return true;
+  });
+  filtered.sort(function(a,b){
+    var av=a.date||'',bv=b.date||'';
+    if(av<bv)return -1*sheetSortDir;if(av>bv)return 1*sheetSortDir;return 0;
+  });
+  var csvEsc=function(v){v=String(v||'');if(v.indexOf(',')>=0||v.indexOf('"')>=0||v.indexOf('\n')>=0)v='"'+v.replace(/"/g,'""')+'"';return v;};
+  var rows=[['Name','Wix #','Date','Shift','Type','Items','Fulfillment','Delivery','Total']];
+  filtered.forEach(function(o){
+    rows.push([
+      csvEsc(o.name),
+      csvEsc(o.wix),
+      csvEsc(o.date||''),
+      csvEsc(cap(o.shift||'')),
+      csvEsc(cap(o.type||'')),
+      csvEsc(o.items.map(function(x){return resolveItemName(x.p)+' x'+x.q;}).join(' | ')),
+      csvEsc(cap(o.fulfillment||'')),
+      csvEsc(cap(o.delivery||'')),
+      csvEsc(o.total||''),
+    ]);
+  });
+  var csv=rows.map(function(r){return r.join(',');}).join('\n');
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download='orders-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+}
 function renderFeedback(){
   document.getElementById('fb-wlabel').textContent=fmtWeek(fbW);
   var days=weekDates(fbW);var isos=days.map(isoDate);
@@ -1716,7 +1766,7 @@ function sendFbSingle(id){var o=ORDERS.find(function(x){return String(x.id)===St
 function renderRecurring(){
   var listHtml='';
   RECURRING.forEach(function(r){
-    listHtml+='<div class="rec-card"><div class="rec-card-hd"><div><div class="rec-name">'+esc(r.name)+'</div><div class="rec-meta">Every '+dayNames[r.dayOfWeek]+' \u00b7 '+r.shift+' \u00b7 '+r.type+'</div></div><span class="tag '+(r.active?'t-ful':'t-pend')+'" style="flex-shrink:0">'+(r.active?'active':'paused')+'</span></div>';
+    listHtml+='<div class="rec-card"><div class="rec-card-hd"><div><div class="rec-name">'+esc(r.name)+'</div><div class="rec-meta">Every '+dayNames[r.dayOfWeek]+' \u00b7 '+cap(r.shift)+' \u00b7 '+cap(r.type)+'</div></div><span class="tag '+(r.active?'t-ful':'t-pend')+'" style="flex-shrink:0">'+(r.active?'Active':'Paused')+'</span></div>';
     listHtml+='<div class="rec-items">'+r.items.map(function(i){var displayName=PRODS[i.p]?i.p:(BASE_PRODUCTS[i.p]?BASE_PRODUCTS[i.p].name:i.p);return '<div class="rec-item-row"><span>'+esc(displayName)+'</span><span>\u00d7'+i.q+'</span></div>';}).join('')+'</div>';
     listHtml+='<div class="rec-actions"><button class="btn" onclick="toggleRecurring('+r.id+')">'+(r.active?'Pause':'Resume')+'</button><button class="btn" onclick="openEditRecurring('+r.id+')">Edit</button><button class="btn" style="color:var(--red);border-color:var(--red-light)" onclick="deleteRecurring('+r.id+')">Delete</button></div></div>';
   });
