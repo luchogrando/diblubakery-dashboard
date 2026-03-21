@@ -64,17 +64,16 @@ module.exports = async function handler(req, res) {
 function parseWixOrder(payload) {
   const wix = payload.data || payload;
 
-  // Contact
+  // Contact — try contact.name first, then billingInfo (which has firstName + lastName)
   const contact = wix.contact || {};
-  console.log('CONTACT:', JSON.stringify(contact));
-  console.log('BILLING:', JSON.stringify(wix.billingInfo?.contactDetails));
+  const billing = wix.billingInfo?.contactDetails || {};
   const name = [contact.name?.first, contact.name?.last].filter(Boolean).join(' ')
-    || [wix.billingInfo?.contactDetails?.firstName, wix.billingInfo?.contactDetails?.lastName].filter(Boolean).join(' ')
+    || [billing.firstName, billing.lastName].filter(Boolean).join(' ')
     || wix.buyerEmail
     || 'Unknown';
   const phone = contact.phone
     || contact.phones?.[0]?.phone
-    || wix.billingInfo?.contactDetails?.phone
+    || billing.phone
     || '';
 
   // Order number
@@ -82,18 +81,17 @@ function parseWixOrder(payload) {
 
   // Line items
   const lineItems = wix.lineItems || [];
-  console.log('LINEITEMS SAMPLE:', JSON.stringify(lineItems[0] || {}));
   const items = lineItems.map(item => {
     const baseName = item.itemName || item.productName?.original || item.name || 'Unknown product';
-    // Variantes: sabor, tamaño, etc.
+    // Variants: size, flavor, etc. — from descriptionLines
     const variants = (item.descriptionLines || [])
-      .map(l => l.colorInfo?.original || l.plainText?.original || l.plainTextValue || l.value || '')
+      .map(l => l.colorInfo?.original || l.plainText?.original || l.plainTextValue?.original || l.value || '')
       .filter(Boolean);
-    const options = item.options
-      ? Object.values(item.options).filter(Boolean)
-      : [];
-    const allVariants = [...new Set([...variants, ...options])];
-    const fullName = allVariants.length > 0 ? `${baseName} (${allVariants.join(', ')})` : baseName;
+    // Also check catalogReference.options.options (e.g. {Size: "Individual"})
+    const catalogOptions = item.catalogReference?.options?.options || {};
+    const catalogVariants = Object.values(catalogOptions).filter(Boolean);
+    const allVariants = [...new Set([...variants, ...catalogVariants])];
+    const fullName = allVariants.length > 0 ? `${baseName} - ${allVariants.join(', ')}` : baseName;
     return { p: fullName, q: item.quantity || 1 };
   });
 
