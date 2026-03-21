@@ -934,6 +934,7 @@ function fmtS(d){return DN[d.getDay()]+' '+d.getDate()+' '+MN[d.getMonth()];}
 function fmtWeek(off){var w=weekDates(off);return fmtS(w[0])+' \u2013 '+fmtS(w[6]);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function cap(s){var v=String(s||"");return v.charAt(0).toUpperCase()+v.slice(1);}
+function properName(s){return String(s||"").replace(/\b\w/g,function(c){return c.toUpperCase();});}
 function goToday(ctx){
   if(ctx==='o')oW=0;else if(ctx==='p')pW=0;else if(ctx==='t')tW=0;else if(ctx==='r')rW=0;else if(ctx==='fb')fbW=0;
   if(ctx==='o')renderOrders();else if(ctx==='p')renderProd();else if(ctx==='t')renderTasks();else if(ctx==='fb')renderFeedback();else renderRem();
@@ -994,7 +995,7 @@ function renderOrders(){
     var rHtml='<div class="cards">';
     recSugs.forEach(function(r){
       rHtml+='<div class="card recurring-card">';
-      rHtml+='<div class="card-name">'+esc(r.name)+'</div>';
+      rHtml+='<div class="card-name">'+esc(properName(r.name))+'</div>';
       rHtml+='<div class="card-wix">Recurring \u00b7 every '+dayNames[r.dayOfWeek]+'</div>';
       rHtml+='<div class="card-tags"><span class="tag t-recurring">Recurring</span><span class="tag '+(r.shift==='morning'?'t-pend':'t-del')+'">'+cap(r.shift)+'</span><span class="tag '+(r.type==='delivery'?'t-del':'t-pu')+'">'+cap(r.type)+'</span></div>';
       rHtml+='<div class="card-items">'+r.items.map(function(i){var displayName=PRODS[i.p]?i.p:(BASE_PRODUCTS[i.p]?BASE_PRODUCTS[i.p].name:i.p);return '<div class="card-item"><span>'+esc(displayName)+'</span><span>\u00d7'+i.q+'</span></div>';}).join('')+'</div>';
@@ -1048,7 +1049,7 @@ function renderOrders(){
         var targetDay=weekDates2.find(function(d){return d.getDay()===r.dayOfWeek;});
         var dateKey=isoDate(targetDay);
         html2+='<div class="card recurring-card">';
-        html2+='<div class="card-name">'+esc(r.name)+'</div>';
+        html2+='<div class="card-name">'+esc(properName(r.name))+'</div>';
         html2+='<div class="card-wix">Recurring · every '+dayNames[r.dayOfWeek]+'</div>';
         html2+='<div class="card-tags"><span class="tag t-recurring">Recurring</span></div>';
         html2+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
@@ -1111,7 +1112,7 @@ function renderCard(o){
   var val=getOrderValue(o);
   var h='<div class="card'+(faded?' faded':'')+(o.recurring?' recurring-card':'')+(o.customDate?' custom-card':'')+'" onclick="openModal('+o.id+')">';
   h+='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:2px">';
-  h+='<div class="card-name">'+esc(o.name)+'</div>';
+  h+='<div class="card-name">'+esc(properName(o.name))+'</div>';
   if(currentRole==='admin')h+='<div style="font-size:12px;font-weight:700;color:var(--green);flex-shrink:0">$'+val+'</div>';
   h+='</div>';
   h+='<div class="card-wix">Wix '+esc(o.wix)+'</div>';
@@ -1134,7 +1135,7 @@ function openModal(id){
   o.items.forEach(function(it){var pr=PRODS[it.p];if(!pr)return;Object.keys(pr.u).forEach(function(u){uT[u]=(uT[u]||0)+pr.u[u]*it.q;});});
   var dateDisplay=o.date?fmtS(new Date(o.date+'T12:00')):'Not set';
   var shiftDisplay=o.shift?(o.shift.charAt(0).toUpperCase()+o.shift.slice(1)):'Not set';
-  var h='<div class="mtitle"><div><div>'+esc(o.name)+'</div><div style="font-size:11px;color:var(--text-3);font-weight:400;margin-top:2px">Wix '+esc(o.wix)+(o.recurring?' \u00b7 <span class="tag t-recurring">Recurring</span>':'')+'</div></div><button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
+  var h='<div class="mtitle"><div><div>'+esc(properName(o.name))+'</div><div style="font-size:11px;color:var(--text-3);font-weight:400;margin-top:2px">Wix '+esc(o.wix)+(o.recurring?' \u00b7 <span class="tag t-recurring">Recurring</span>':'')+'</div></div><button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
   if(o.edited)h+='<div style="font-size:11px;background:#fff0c0;border-radius:6px;padding:6px 10px;margin-bottom:10px;color:#7a5c00">\u270f Last edited by <b>'+esc(o.editedBy)+'</b></div>';
   h+='<div class="mrow"><span class="ml">Date</span><span class="mr">'+dateDisplay+'</span></div>';
   h+='<div class="mrow"><span class="ml">Shift</span><span class="mr">'+shiftDisplay+'</span></div>';
@@ -1227,7 +1228,7 @@ function deleteOrderConfirm(id){
 function openEditOrderModal(id){
   var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;
   var h='<div class="mtitle">Edit order<button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
-  h+='<div style="margin-bottom:10px"><div class="flabel">Name</div><input class="finput" type="text" id="eo-name" value="'+esc(o.name)+'"></div>';
+  h+='<div style="margin-bottom:10px"><div class="flabel">Name</div><input class="finput" type="text" id="eo-name" value="'+esc(properName(o.name))+'"></div>';
   h+='<div style="margin-bottom:10px"><div class="flabel">Phone</div><input class="finput" type="text" id="eo-phone" value="'+esc(o.phone)+'"></div>';
   h+='<div style="margin-bottom:10px"><div class="flabel">Wix order #</div><input class="finput" type="text" id="eo-wix" value="'+esc(o.wix)+'"></div>';
   h+='<div class="form-g2" style="margin-bottom:10px">';
@@ -1384,7 +1385,7 @@ function showPresPopup(e,day,pres){
   h+='<div class="msec">Orders</div>';
   orders.forEach(function(r){
     var tag=r.recurring?'<span style="font-size:10px;color:var(--recurring);font-weight:600;margin-left:5px">Recurring</span>':'';
-    h+='<div class="mrow"><span class="ml">'+esc(r.name)+' '+esc(r.wix)+tag+'</span><span class="mr" style="font-weight:700">\u00d7'+r.q+'</span></div>';
+    h+='<div class="mrow"><span class="ml">'+esc(properName(r.name))+' '+esc(r.wix)+tag+'</span><span class="mr" style="font-weight:700">\u00d7'+r.q+'</span></div>';
   });
   h+='<div style="display:flex;justify-content:space-between;padding:10px 0 0;margin-top:6px;border-top:1px solid var(--border);font-size:14px;font-weight:700"><span>Total</span><span style="color:var(--accent)">'+total+'</span></div>';
   document.getElementById('mbox').innerHTML=h;
@@ -1489,7 +1490,7 @@ function renderRem(){
     var sent=!!REMINDERS_SENT[String(o.id)];
     html+='<div class="rcard" style="'+(sent?'opacity:0.5;pointer-events:none;background:var(--bg)':'')+'"><div class="rtop">';
     html+='<div class="rchk'+(on?' on':'')+'" onclick="toggleRem('+o.id+')">'+(on?'&#x2713;':'')+'</div>';
-    html+='<div class="rinfo"><div class="rname">'+esc(o.name)+'</div><div class="rord">Wix '+esc(o.wix)+'</div>';
+    html+='<div class="rinfo"><div class="rname">'+esc(properName(o.name))+'</div><div class="rord">Wix '+esc(o.wix)+'</div>';
     html+='<div class="rsub">'+d+(o.shift?' \u00b7 '+cap(o.shift):'')+' \u00b7 '+cap(o.type)+'</div>';
     if(editing){html+='<textarea id="re'+o.id+'" class="msginp" rows="3" style="margin-top:8px">'+esc(msg)+'</textarea><div style="display:flex;gap:7px;margin-top:6px"><button class="sbtn" onclick="saveEdit('+o.id+')">Save</button><button class="ebtn" onclick="cancelEdit('+o.id+')">Cancel</button></div>';}
     else{html+='<div class="rmsgbox" onclick="openEdit('+o.id+')">'+esc(msg)+'</div>';}
@@ -1541,7 +1542,7 @@ function sendNextInBatch(){
   if(_batchQueue.length>0){
     var next=_batchQueue[0];
     var h='<div class="mtitle">Sending batch <button class="xbtn" onclick="closeModal();_batchQueue=[];">&#x00D7;</button></div>';
-    h+='<div style="font-size:12px;color:var(--text-2);margin-bottom:6px">Just sent to <b>'+esc(o.name)+'</b> ('+esc(o.wix)+')</div>';
+    h+='<div style="font-size:12px;color:var(--text-2);margin-bottom:6px">Just sent to <b>'+esc(properName(o.name))+'</b> ('+esc(o.wix)+')</div>';
     h+='<div style="margin-bottom:14px;padding:10px 12px;background:var(--accent-light);border-radius:8px;">';
     h+='<div style="font-size:11px;color:var(--text-3);margin-bottom:2px">Next up ('+_batchQueue.length+' remaining)</div>';
     h+='<div style="font-size:14px;font-weight:700">'+esc(next.name)+'</div>';
@@ -1662,7 +1663,7 @@ function renderSheet(){
   filtered.forEach(function(o,i){
     var bg=i%2===0?'':'background:var(--bg)';
     html+='<tr style="border-bottom:1px solid var(--border);cursor:pointer;vertical-align:top;'+bg+'" onclick="openModal('+o.id+')">';
-    html+='<td style="padding:7px 10px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(o.name)+'</td>';
+    html+='<td style="padding:7px 10px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(properName(o.name))+'</td>';
     html+='<td style="padding:7px 10px;color:var(--text-2);font-family:monospace;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(o.wix)+'</td>';
     html+='<td style="padding:7px 10px;white-space:nowrap">'+(o.date?fmtS(new Date(o.date+'T12:00')):'—')+'</td>';
     html+='<td style="padding:7px 10px;white-space:nowrap">'+cap(o.shift||'—')+'</td>';
@@ -1744,7 +1745,7 @@ function renderFeedback(){
   delivered.forEach(function(o){
     var on=!!fbSel[o.id];var sent=!!FEEDBACK_SENT[o.id];
     html+='<div class="fb-card"><div class="fb-check'+(on?' on':'')+'" onclick="toggleFb('+o.id+')">'+(on?'&#x2713;':'')+'</div>';
-    html+='<div class="fb-info"><div class="fb-name">'+esc(o.name)+'</div>';
+    html+='<div class="fb-info"><div class="fb-name">'+esc(properName(o.name))+'</div>';
     html+='<div class="fb-sub">Wix '+esc(o.wix)+' \u00b7 '+(o.date?fmtS(new Date(o.date+'T12:00')):'')+'</div>';
     html+='<div class="fb-sub" style="margin-top:2px">'+o.items.map(function(i){return i.p+' \u00d7'+i.q;}).join(', ')+'</div>';
     if(sent)html+='<div class="fb-sent">&#x2713; Feedback sent</div>';
@@ -1766,7 +1767,7 @@ function sendFbSingle(id){var o=ORDERS.find(function(x){return String(x.id)===St
 function renderRecurring(){
   var listHtml='';
   RECURRING.forEach(function(r){
-    listHtml+='<div class="rec-card"><div class="rec-card-hd"><div><div class="rec-name">'+esc(r.name)+'</div><div class="rec-meta">Every '+dayNames[r.dayOfWeek]+' \u00b7 '+cap(r.shift)+' \u00b7 '+cap(r.type)+'</div></div><span class="tag '+(r.active?'t-ful':'t-pend')+'" style="flex-shrink:0">'+(r.active?'Active':'Paused')+'</span></div>';
+    listHtml+='<div class="rec-card"><div class="rec-card-hd"><div><div class="rec-name">'+esc(properName(r.name))+'</div><div class="rec-meta">Every '+dayNames[r.dayOfWeek]+' \u00b7 '+cap(r.shift)+' \u00b7 '+cap(r.type)+'</div></div><span class="tag '+(r.active?'t-ful':'t-pend')+'" style="flex-shrink:0">'+(r.active?'Active':'Paused')+'</span></div>';
     listHtml+='<div class="rec-items">'+r.items.map(function(i){var displayName=PRODS[i.p]?i.p:(BASE_PRODUCTS[i.p]?BASE_PRODUCTS[i.p].name:i.p);return '<div class="rec-item-row"><span>'+esc(displayName)+'</span><span>\u00d7'+i.q+'</span></div>';}).join('')+'</div>';
     listHtml+='<div class="rec-actions"><button class="btn" onclick="toggleRecurring('+r.id+')">'+(r.active?'Pause':'Resume')+'</button><button class="btn" onclick="openEditRecurring('+r.id+')">Edit</button><button class="btn" style="color:var(--red);border-color:var(--red-light)" onclick="deleteRecurring('+r.id+')">Delete</button></div></div>';
   });
@@ -1825,7 +1826,7 @@ function openEditRecurring(id){openRecurringForm(id);}
 function openRecurringForm(id){
   var r=id?RECURRING.find(function(x){return String(x.id)===String(id);}):null;
   var h='<div class="mtitle">'+(r?'Edit recurring order':'New recurring order')+'<button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
-  h+='<div style="margin-bottom:10px"><div class="flabel">Customer name</div><input class="finput" type="text" id="rec-name" value="'+(r?esc(r.name):'')+'"></div>';
+  h+='<div style="margin-bottom:10px"><div class="flabel">Customer name</div><input class="finput" type="text" id="rec-name" value="'+(r?esc(properName(r.name)):'')+'"></div>';
   h+='<div style="margin-bottom:10px"><div class="flabel">WhatsApp</div><input class="finput" type="text" id="rec-phone" value="'+(r?esc(r.phone):'')+'"></div>';
   h+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">';
   h+='<div><div class="flabel">Day</div><select id="rec-dow" class="finput">'+dayNames.map(function(d,i){return '<option value="'+i+'"'+(r&&r.dayOfWeek===i?' selected':'')+'>'+d+'</option>';}).join('')+'</select></div>';
