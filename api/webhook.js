@@ -47,7 +47,42 @@ module.exports = async function handler(req, res) {
     }
 
     // ── NEW ORDER EVENT ───────────────────────────────────────
-    const order = parseWixOrder(body);
+    // Parse the webhook payload first
+    let orderData = body.data || body;
+
+    // If any lineItem is missing descriptionLines/variants, enrich from Wix API
+    const lineItems = orderData.lineItems || [];
+    const needsEnrichment = lineItems.some(item => {
+      const hasDescLines = (item.descriptionLines || []).length > 0;
+      const hasCatOpts = Object.keys(item.catalogReference?.options?.options || {}).length > 0;
+      return !hasDescLines && !hasCatOpts;
+    });
+
+    if (needsEnrichment && process.env.WIX_API_KEY && process.env.WIX_SITE_ID) {
+      try {
+        const orderNum = orderData.number || orderData.orderNumber;
+        const r = await fetch('https://www.wixapis.com/ecom/v1/orders/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': process.env.WIX_API_KEY,
+            'wix-site-id': process.env.WIX_SITE_ID,
+          },
+          body: JSON.stringify({ filter: { number: { $eq: parseInt(orderNum) } } }),
+        });
+        const data = await r.json();
+        const enriched = (data.orders || [])[0];
+        if (enriched) {
+          // Merge enriched lineItems into the payload
+          orderData = { ...orderData, lineItems: enriched.lineItems || orderData.lineItems };
+          console.log('Enriched order', orderNum, 'from Wix API');
+        }
+      } catch (e) {
+        console.warn('Could not enrich order from Wix API:', e.message);
+      }
+    }
+
+    const order = parseWixOrder({ ...body, data: orderData, lineItems: orderData.lineItems });
 
     // Always write as unfulfilled — fulfillment is managed from the dashboard
     // (Wix backoffice orders may arrive with FULFILLED status incorrectly)
@@ -79,8 +114,10 @@ function parseWixOrder(payload) {
   // Order number
   const wixOrderId = '#' + (wix.orderNumber || wix.number || wix.id || Date.now());
 
+  // Line items — prefer top-level lineItems (enriched) over nested
+  const lineItems = payload.lineItems || wix.lineItems || [];
+
   // Line items
-  const lineItems = wix.lineItems || [];
   const items = lineItems.map(item => {
     const baseName = item.itemName || item.productName?.original || item.name || 'Unknown product';
     // Variants: size, flavor, etc. — from descriptionLines
@@ -104,11 +141,10 @@ function parseWixOrder(payload) {
   const shippingTitle = shippingInfo.title || '';
   const titleLower = shippingTitle.toLowerCase();
 
-  // Type
-  const pickupMethod = shippingInfo.logistics?.pickupDetails?.pickupMethod
-    || shippingInfo.logistics?.shippingDestination?.pickupMethod || '';
-  const isPickup = pickupMethod === 'STORE_PICKUP'
-    || titleLower.includes('pick up')
+  // Type — rely on title since Wix uses STORE_PICKUP for both pickup and local delivery
+  // Real pickups have "pick-up" / "pickup" / "pick up" in the title
+  // Deliveries have titles like "Jersey City 03/21", "Manhattan 03/27" etc.
+  const isPickup = titleLower.includes('pick up')
     || titleLower.includes('pickup')
     || titleLower.includes('pick-up');
   const type = isPickup ? 'pickup' : 'delivery';
