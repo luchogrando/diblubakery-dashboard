@@ -1431,7 +1431,9 @@ function renderProd(){
       ph+='<tr><td colspan="'+(days.length+2)+'" style="padding:5px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--recurring);background:var(--recurring-light)">Recurring orders</td></tr>';
       recPres.forEach(function(p){
         var tot=isos.reduce(function(s,d){return s+(presMap[d][p]||0);},0);
-        ph+='<tr><td>'+esc(p)+'</td>';
+        var isBaseProduct=!PRODS[p];
+        var displayP=isBaseProduct?esc(p)+' <span style="font-size:10px;color:var(--text-3);font-weight:400">(units)</span>':esc(p);
+        ph+='<tr><td>'+displayP+'</td>';
         ph+=isos.map(function(d){var v=presMap[d][p];return v?'<td class="has"><span class="ulink" onclick="showPresPopup(event,\''+d+'\',\''+p.replace(/'/g,"\\'")+'\')">'+ v+'</span></td>':'<td class="zero">\u2014</td>';}).join('');
         ph+='<td class="tot"><span class="ulink" onclick="showPresPopup(event,\'all\',\''+p.replace(/'/g,"\\'")+'\')">'+tot+'</span></td></tr>';
       });
