@@ -1731,12 +1731,15 @@ function renderSheet(){
     {key:'date',label:'Date'},{key:'shift',label:'Shift'},
     {key:'type',label:'Type'},{key:'items',label:'Items'},
     {key:'fulfillment',label:'Fulfillment'},{key:'delivery',label:'Delivery'},
-    {key:'total',label:'Total'}
   ];
+  if(currentRole==='admin')cols.push({key:'total',label:'Total'});
   var sortable=['name','wix','date','fulfillment','delivery','total'];
 
-  var html='<div class="sheet-table-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">';
-  html+='<colgroup><col style="width:133px"><col style="width:110px"><col style="width:95px"><col style="width:80px"><col style="width:75px"><col style="width:192px"><col style="width:105px"><col style="width:90px"><col style="width:70px"></colgroup>';
+  var html='<div class="sheet-table-wrap"><table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed">';
+  var colWidths=currentRole==='admin'
+    ?'<col style="width:133px"><col style="width:110px"><col style="width:95px"><col style="width:80px"><col style="width:75px"><col style="width:207px"><col style="width:105px"><col style="width:90px"><col style="width:70px">'
+    :'<col style="width:133px"><col style="width:110px"><col style="width:95px"><col style="width:80px"><col style="width:75px"><col style="width:277px"><col style="width:105px"><col style="width:90px">';
+  html+='<colgroup>'+colWidths+'</colgroup>';
   html+='<thead><tr style="border-bottom:2px solid var(--border)">';
   cols.forEach(function(c){
     var canSort=sortable.indexOf(c.key)>=0;
@@ -1750,11 +1753,11 @@ function renderSheet(){
     var bg=i%2===0?'':'background:var(--bg)';
     html+='<tr style="border-bottom:1px solid var(--border);cursor:pointer;vertical-align:top;'+bg+'" onclick="openModal('+o.id+')">';
     html+='<td style="padding:7px 10px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(properName(o.name))+'</td>';
-    html+='<td style="padding:7px 10px;color:var(--text-2);font-family:monospace;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(o.wix)+'</td>';
+    html+='<td style="padding:7px 10px;color:var(--text-2);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(o.wix)+'</td>';
     html+='<td style="padding:7px 10px;white-space:nowrap">'+(o.date?fmtS(new Date(o.date+'T12:00')):'—')+'</td>';
     html+='<td style="padding:7px 10px;white-space:nowrap">'+cap(o.shift||'—')+'</td>';
     html+='<td style="padding:7px 10px;white-space:nowrap">'+cap(o.type||'—')+'</td>';
-    html+='<td style="padding:7px 10px;font-size:11px">'+o.items.map(function(x){
+    html+='<td style="padding:7px 10px">'+o.items.map(function(x){
       var name=esc(resolveItemName(x.p));
       return '<div style="display:flex;justify-content:space-between;gap:8px;white-space:nowrap">'
         +'<span style="overflow:hidden;text-overflow:ellipsis">'+name+'</span>'
@@ -1763,7 +1766,7 @@ function renderSheet(){
     }).join('')+'</td>';
     html+='<td style="padding:7px 10px"><span class="tag '+(o.fulfillment==='fulfilled'?'t-ful':'t-unf')+'">'+cap(o.fulfillment)+'</span></td>';
     html+='<td style="padding:7px 10px"><span class="tag '+(o.delivery==='delivered'?'t-del':'t-pend')+'">'+cap(o.delivery)+'</span></td>';
-    html+='<td style="padding:7px 10px">'+(o.total?'$'+o.total:'—')+'</td>';
+    if(currentRole==='admin')html+='<td style="padding:7px 10px">'+(o.total?'$'+o.total:'—')+'</td>';
     html+='</tr>';
   });
   html+='</tbody></table></div>';
