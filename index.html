@@ -1381,12 +1381,17 @@ function renderProd(){
           unitBD[o.date][u].push({p:it.p,boxQ:it.q,n:n,recurring:o.recurring,fromPres:true});
         });
       } else {
-        // Base product used directly (recurring order)
+        // Base product used directly (recurring order) — also track for presentations to pack
         var bpKey=BASE_PRODUCTS[it.p]?it.p:Object.keys(BASE_PRODUCTS).find(function(k){return BASE_PRODUCTS[k].name===it.p;});
         if(bpKey){
+          var displayName=BASE_PRODUCTS[bpKey]?BASE_PRODUCTS[bpKey].name:it.p;
+          // Add to presMap using display name so it appears in presentations table
+          presMap[o.date][displayName]=(presMap[o.date][displayName]||0)+it.q;
+          if(!presBD[o.date][displayName])presBD[o.date][displayName]=[];
+          presBD[o.date][displayName].push({wix:o.wix,name:o.name,q:it.q,recurring:true});
           unitMap[o.date][bpKey]=(unitMap[o.date][bpKey]||0)+it.q;
           if(!unitBD[o.date][bpKey])unitBD[o.date][bpKey]=[];
-          unitBD[o.date][bpKey].push({p:it.p,boxQ:it.q,n:it.q,recurring:o.recurring,fromPres:false});
+          unitBD[o.date][bpKey].push({p:displayName,boxQ:it.q,n:it.q,recurring:o.recurring,fromPres:false});
         }
       }
     });
@@ -1398,22 +1403,23 @@ function renderProd(){
   var clientPres=[], recPres=[];
   weekOrders.forEach(function(o){
     o.items.forEach(function(it){
-      if(!PRODS[it.p])return;
-      if(o.recurring){if(recPres.indexOf(it.p)<0)recPres.push(it.p);}
-      else{if(clientPres.indexOf(it.p)<0)clientPres.push(it.p);}
+      var isPresentation=!!PRODS[it.p];
+      var displayName=isPresentation?it.p:(BASE_PRODUCTS[it.p]?BASE_PRODUCTS[it.p].name:(Object.keys(BASE_PRODUCTS).find(function(k){return BASE_PRODUCTS[k].name===it.p;})?it.p:null));
+      if(!displayName)return;
+      if(!isPresentation&&!o.recurring)return; // only track base products from recurring
+      if(o.recurring){if(recPres.indexOf(displayName)<0)recPres.push(displayName);}
+      else{if(clientPres.indexOf(displayName)<0)clientPres.push(displayName);}
     });
   });
   clientPres.sort(function(a,b){return a.toLowerCase()<b.toLowerCase()?-1:1;});
   recPres.sort(function(a,b){return a.toLowerCase()<b.toLowerCase()?-1:1;});
-  var allPres=clientPres.concat(recPres.filter(function(p){return clientPres.indexOf(p)<0;}));
 
   var ph='<thead><tr><th>Presentation</th>'+days.map(function(d){return '<th class="day-h">'+fmtS(d)+'</th>';}).join('')+'<th class="tot-h">Total</th></tr></thead><tbody>';
-  if(!allPres.length){
+  if(!clientPres.length&&!recPres.length){
     ph+='<tr><td colspan="'+(days.length+2)+'" style="padding:16px;color:var(--text-3)">No orders this week</td></tr>';
   } else {
-    // Client orders section
     if(clientPres.length){
-      ph+='<tr><td colspan="'+(days.length+2)+'" style="padding:6px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);background:var(--bg)">Client orders</td></tr>';
+      ph+='<tr><td colspan="'+(days.length+2)+'" style="padding:5px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);background:var(--bg)">Client orders</td></tr>';
       clientPres.forEach(function(p){
         var tot=isos.reduce(function(s,d){return s+(presMap[d][p]||0);},0);
         ph+='<tr><td>'+esc(p)+'</td>';
@@ -1421,12 +1427,11 @@ function renderProd(){
         ph+='<td class="tot"><span class="ulink" onclick="showPresPopup(event,\'all\',\''+p.replace(/'/g,"\\'")+'\')">'+tot+'</span></td></tr>';
       });
     }
-    // Recurring orders section
     if(recPres.length){
-      ph+='<tr><td colspan="'+(days.length+2)+'" style="padding:6px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--recurring);background:var(--recurring-light)">Recurring orders</td></tr>';
+      ph+='<tr><td colspan="'+(days.length+2)+'" style="padding:5px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--recurring);background:var(--recurring-light)">Recurring orders</td></tr>';
       recPres.forEach(function(p){
         var tot=isos.reduce(function(s,d){return s+(presMap[d][p]||0);},0);
-        ph+='<tr style="background:var(--recurring-light)"><td>'+esc(p)+'</td>';
+        ph+='<tr><td>'+esc(p)+'</td>';
         ph+=isos.map(function(d){var v=presMap[d][p];return v?'<td class="has"><span class="ulink" onclick="showPresPopup(event,\''+d+'\',\''+p.replace(/'/g,"\\'")+'\')">'+ v+'</span></td>':'<td class="zero">\u2014</td>';}).join('');
         ph+='<td class="tot"><span class="ulink" onclick="showPresPopup(event,\'all\',\''+p.replace(/'/g,"\\'")+'\')">'+tot+'</span></td></tr>';
       });
