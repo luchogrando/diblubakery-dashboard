@@ -1,223 +1,45 @@
-// api/webhook.js — POST /api/webhook
-// Receives new orders AND fulfillment updates from Wix
+// api/orders.js — GET /api/orders
+// Returns all orders from Google Sheets
 
-const { appendOrder, updateOrder, readOrders } = require('./_sheets');
+const { readOrders, appendOrder, deleteOrder } = require('./_sheets');
+
+const ALLOWED_ORIGINS = ['https://diblubakery-dashboard.vercel.app'];
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-wix-signature');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-  const secret = req.headers['x-wix-signature'] || req.headers['x-webhook-secret'] || req.query?.secret;
-  if (process.env.WIX_WEBHOOK_SECRET && secret !== process.env.WIX_WEBHOOK_SECRET) {
-    return res.status(401).json({ error: 'Invalid webhook secret' });
+  // CORS
+  const origin = req.headers.origin;
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
   }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // Auth check
+  const auth = req.headers.authorization || '';
+  const token = auth.replace('Bearer ', '');
+  const authUser = await requireAuth(token);
+  if (!authUser) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
-    const body = req.body;
-
-    const wix = body.data || body;
-    const eventType = body.type || body.eventType || wix.type || '';
-
-    // ── FULFILLMENT UPDATE EVENT ──────────────────────────────
-    // Only treat as fulfillment update if eventType explicitly says so
-    // (all new orders also have fulfillmentStatus field so we can't use that)
-    if (
-      eventType === 'ORDER_FULFILLED' ||
-      eventType === 'ORDER_NOT_FULFILLED' ||
-      eventType === 'wix.ecom.v1.order_fulfilled' ||
-      eventType === 'wix.ecom.v1.order_not_fulfilled'
-    ) {
-      const orderNumber = '#' + (wix.number || wix.orderNumber);
-      const fulfillmentStatus = wix.fulfillmentStatus === 'FULFILLED' ? 'fulfilled' : 'unfulfilled';
-      console.log('Fulfillment update:', orderNumber, '->', fulfillmentStatus);
-
-      // Find the order in the Sheet by wix order number and update it
-      const orders = await readOrders();
-      const existing = orders.find(o => o.wix === orderNumber);
-      if (existing) {
-        await updateOrder(existing.id, { fulfillment: fulfillmentStatus });
-        console.log('Updated fulfillment in Sheet:', orderNumber, fulfillmentStatus);
-      } else {
-        console.log('Order not found in Sheet for fulfillment update:', orderNumber);
-      }
-      return res.status(200).json({ ok: true, updated: orderNumber, fulfillment: fulfillmentStatus });
+    if (req.method === 'POST') {
+      const order = req.body;
+      if (!order || !order.wix) return res.status(400).json({ error: 'Invalid order' });
+      await appendOrder(order);
+      return res.status(200).json({ ok: true });
     }
-
-    // ── NEW ORDER EVENT ───────────────────────────────────────
-    // Parse the webhook payload first
-    let orderData = body.data || body;
-
-    // If any lineItem is missing descriptionLines/variants, enrich from Wix API
-    const lineItems = orderData.lineItems || [];
-    const needsEnrichment = lineItems.some(item => {
-      const hasDescLines = (item.descriptionLines || []).length > 0;
-      const hasCatOpts = Object.keys(item.catalogReference?.options?.options || {}).length > 0;
-      return !hasDescLines && !hasCatOpts;
-    });
-
-    if (needsEnrichment && process.env.WIX_API_KEY && process.env.WIX_SITE_ID) {
-      try {
-        const orderNum = orderData.number || orderData.orderNumber;
-        const r = await fetch('https://www.wixapis.com/ecom/v1/orders/search', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': process.env.WIX_API_KEY,
-            'wix-site-id': process.env.WIX_SITE_ID,
-          },
-          body: JSON.stringify({ filter: { number: { $eq: parseInt(orderNum) } } }),
-        });
-        const data = await r.json();
-        const enriched = (data.orders || [])[0];
-        if (enriched) {
-          // Merge enriched lineItems into the payload
-          orderData = { ...orderData, lineItems: enriched.lineItems || orderData.lineItems };
-          console.log('Enriched order', orderNum, 'from Wix API');
-        }
-      } catch (e) {
-        console.warn('Could not enrich order from Wix API:', e.message);
-      }
+    if (req.method === 'DELETE') {
+      const { id } = req.body || {};
+      if (!id) return res.status(400).json({ error: 'Missing id' });
+      await deleteOrder(id);
+      return res.status(200).json({ ok: true });
     }
-
-    const order = parseWixOrder({ ...body, data: orderData, lineItems: orderData.lineItems });
-
-    // Always write as unfulfilled — fulfillment is managed from the dashboard
-    // (Wix backoffice orders may arrive with FULFILLED status incorrectly)
-    await appendOrder(order);
-    console.log('New order from Wix:', order.wix, order.name, '| fulfillment:', order.fulfillment);
-    return res.status(200).json({ ok: true, id: order.id });
-
+    const orders = await readOrders();
+    return res.status(200).json({ orders });
   } catch (err) {
-    console.error('Webhook error:', err);
-    return res.status(500).json({ error: 'Failed to process webhook', detail: err.message });
+    console.error('Error reading orders:', err);
+    return res.status(500).json({ error: 'Failed to read orders', detail: err.message });
   }
 };
 
-function parseWixOrder(payload) {
-  const wix = payload.data || payload;
-
-  // Contact — try contact.name first, then billingInfo (which has firstName + lastName)
-  const contact = wix.contact || {};
-  const billing = wix.billingInfo?.contactDetails || {};
-  const name = [contact.name?.first, contact.name?.last].filter(Boolean).join(' ')
-    || [billing.firstName, billing.lastName].filter(Boolean).join(' ')
-    || wix.buyerEmail
-    || 'Unknown';
-  const phone = contact.phone
-    || contact.phones?.[0]?.phone
-    || billing.phone
-    || '';
-
-  // Order number
-  const wixOrderId = '#' + (wix.orderNumber || wix.number || wix.id || Date.now());
-
-  // Line items — prefer top-level lineItems (enriched) over nested
-  const lineItems = payload.lineItems || wix.lineItems || [];
-
-  // Line items
-  const items = lineItems.map(item => {
-    const baseName = item.itemName || item.productName?.original || item.name || 'Unknown product';
-    // Variants: size, flavor, etc. — from descriptionLines
-    const variants = (item.descriptionLines || [])
-      .map(l => l.colorInfo?.original || l.plainText?.original || l.plainTextValue?.original || l.value || '')
-      .filter(Boolean);
-    // Also check catalogReference.options.options (e.g. {Size: "Individual"})
-    const catalogOptions = item.catalogReference?.options?.options || {};
-    const catalogVariants = Object.values(catalogOptions).filter(Boolean);
-    const allVariants = [...new Set([...variants, ...catalogVariants])];
-    const fullName = allVariants.length > 0 ? `${baseName} - ${allVariants.join(', ')}` : baseName;
-    return { p: fullName, q: item.quantity || 1 };
-  });
-
-  // Total
-  const pricing = wix.priceSummary || {};
-  const total = parseFloat(pricing.total?.amount || pricing.total?.value || pricing.subtotal?.amount || pricing.subtotal?.value || 0) || null;
-
-  // Shipping
-  const shippingInfo = wix.shippingInfo || {};
-  const shippingTitle = shippingInfo.title || '';
-  const titleLower = shippingTitle.toLowerCase();
-
-  // Type — rely on title since Wix uses STORE_PICKUP for both pickup and local delivery
-  // Real pickups have "pick-up" / "pickup" / "pick up" in the title
-  // Deliveries have titles like "Jersey City 03/21", "Manhattan 03/27" etc.
-  const isPickup = titleLower.includes('pick up')
-    || titleLower.includes('pickup')
-    || titleLower.includes('pick-up');
-  const type = isPickup ? 'pickup' : 'delivery';
-
-  // Custom date
-  const isCustomDate = titleLower.includes('custom date') || titleLower.includes('custom');
-
-  // Parse date from title
-  let date = null;
-  if (!isCustomDate) {
-    const slashMatch = shippingTitle.match(/(\d{1,2})\/(\d{1,2})/);
-    if (slashMatch) {
-      const month = slashMatch[1].padStart(2, '0');
-      const day = slashMatch[2].padStart(2, '0');
-      date = `${new Date().getFullYear()}-${month}-${day}`;
-    } else {
-      const months = {january:'01',february:'02',march:'03',april:'04',may:'05',june:'06',july:'07',august:'08',september:'09',october:'10',november:'11',december:'12',jan:'01',feb:'02',mar:'03',apr:'04',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
-      const monthMatch = shippingTitle.match(/([a-z]+)\s+(\d{1,2})/i);
-      if (monthMatch) {
-        const m = months[monthMatch[1].toLowerCase()];
-        if (m) date = `${new Date().getFullYear()}-${m}-${monthMatch[2].padStart(2, '0')}`;
-      }
-    }
-  }
-
-  // Shift
-  let shift = 'morning';
-  if (!isCustomDate) {
-    const timeMatch = shippingTitle.match(/(\d{1,2})[:-]?\d*\s*(am|pm)/i);
-    if (timeMatch) {
-      shift = timeMatch[2].toLowerCase() === 'am' ? 'morning' : 'afternoon';
-    } else if (titleLower.includes('afternoon') || titleLower.includes('pm')) {
-      shift = 'afternoon';
-    }
-  }
-
-  // Notes — recolectamos todos los campos posibles de Wix que pueden contener notas
-  const noteFields = [
-    wix.buyerNote,
-    wix.internalNote,
-    wix.buyerInfo?.buyerNote,
-    wix.giftMessage,
-    wix.note,
-    wix.customFields?.map(f => `${f.title}: ${f.value}`).join(' | '),
-    wix.channelInfo?.externalOrderNotes,
-  ].filter(Boolean).map(s => String(s).trim()).filter(s => s.length > 0);
-
-  let notes = [...new Set(noteFields)].join(' | ');
-  if (type === 'delivery') {
-    const dest = shippingInfo.logistics?.shippingDestination?.address;
-    if (dest) {
-      const addr = [dest.addressLine, dest.city, dest.postalCode].filter(Boolean).join(', ');
-      if (addr) notes = notes ? `${notes} | Delivery: ${addr}` : `Delivery: ${addr}`;
-    }
-  }
-
-  return {
-    id: Date.now(),
-    wix: wixOrderId,
-    name,
-    phone,
-    date: isCustomDate ? null : date,
-    shift,
-    type,
-    fulfillment: wix.fulfillmentStatus === 'FULFILLED' ? 'fulfilled' : 'unfulfilled',
-    delivery: 'pending',
-    customDate: isCustomDate || !date,
-    recurring: false,
-    notes,
-    items,
-    total,
-    edited: false,
-    editedBy: '',
-    createdAt: wix.createdDate || new Date().toISOString(),
-  };
-}
+const { requireAuth } = require('./_auth');
