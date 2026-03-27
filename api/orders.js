@@ -21,17 +21,14 @@ module.exports = async function handler(req, res) {
   const authUser = await requireAuth(token);
   if (!authUser) return res.status(401).json({ error: 'Unauthorized' });
 
-  // ── TEMP DEBUG ──────────────────────────────────────────────
+  // ── TEMP DEBUG: search by order number ──────────────────────
   if (req.method === 'GET' && req.query.debug) {
     const num = parseInt(req.query.debug);
     try {
       const r = await fetch('https://www.wixapis.com/ecom/v1/orders/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': process.env.WIX_API_KEY, 'wix-site-id': process.env.WIX_SITE_ID },
-        body: JSON.stringify({
-            sort: [{ fieldName: 'number', order: 'DESC' }],
-            cursorPaging: { limit: 200 }
-          }),
+        body: JSON.stringify({ sort: [{ fieldName: 'number', order: 'DESC' }], cursorPaging: { limit: 100 } }),
       });
       const data = await r.json();
       const orders = data.orders || [];
@@ -44,11 +41,13 @@ module.exports = async function handler(req, res) {
       });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
+
+  // ── TEMP DEBUG: fetch by Wix internal ID ────────────────────
   if (req.method === 'GET' && req.query.debugById) {
     const id = req.query.debugById;
     try {
       const r = await fetch(`https://www.wixapis.com/ecom/v1/orders/${id}`, {
-        headers: { 'Content-Type': 'application/json', 'Authorization': process.env.WIX_API_KEY, 'wix-site-id': process.env.WIX_SITE_ID },
+        headers: { 'Authorization': process.env.WIX_API_KEY, 'wix-site-id': process.env.WIX_SITE_ID },
       });
       const data = await r.json();
       const order = data.order || null;
@@ -58,33 +57,6 @@ module.exports = async function handler(req, res) {
         fulfillmentStatus: order?.fulfillmentStatus,
         billingInfo: order?.billingInfo?.contactDetails,
         lineItems: order?.lineItems,
-      });
-    } catch (err) { return res.status(500).json({ error: err.message }); }
-  }
-    const checkoutId = req.query.debugCheckout;
-    try {
-      // Try v1
-      const r1 = await fetch(`https://www.wixapis.com/ecom/v1/checkouts/${checkoutId}`, {
-        headers: { 'Authorization': process.env.WIX_API_KEY, 'wix-site-id': process.env.WIX_SITE_ID },
-      });
-      const d1 = await r1.json();
-
-      // Try v2 orders API
-      const r2 = await fetch(`https://www.wixapis.com/ecom/v2/orders?checkoutId=${checkoutId}`, {
-        headers: { 'Authorization': process.env.WIX_API_KEY, 'wix-site-id': process.env.WIX_SITE_ID },
-      });
-      const d2 = await r2.json();
-
-      // Try checkout v2
-      const r3 = await fetch(`https://www.wixapis.com/ecom/v2/checkouts/${checkoutId}`, {
-        headers: { 'Authorization': process.env.WIX_API_KEY, 'wix-site-id': process.env.WIX_SITE_ID },
-      });
-      const d3 = await r3.json();
-
-      return res.status(200).json({
-        v1_checkout: d1,
-        v2_orders: d2,
-        v2_checkout: d3,
       });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
