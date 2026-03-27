@@ -440,6 +440,7 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
             <option value="all">All time</option>
           </select>
           <button class="btn" onclick="downloadSheetCSV()" style="font-size:11px;padding:4px 11px;margin-left:auto">⬇ Export CSV</button>
+          <button class="btn" onclick="printSelected()" style="font-size:11px;padding:4px 11px">🖨 Print selected</button>
         </div>
         <div class="filters">
           <button class="fbtn on" data-sf="all" onclick="setSheetFilter(this)">All</button>
@@ -529,11 +530,37 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
       </div>
     </div>
     <div class="page-body">
-      <div class="defbox">
-        <div class="deflabel">Default reminder message</div>
-        <textarea id="def-msg" class="msginp" rows="3">Hi {name}! Just a reminder from Di Blu Bakery :) Your order {order} will be {type} on {date} in the {shift}. Can't wait for you to enjoy it!</textarea>
-        <div style="font-size:11px;color:var(--text-3);margin-top:5px">Variables: {name} {order} {date} {shift} {type} {items} &nbsp;·&nbsp; <a href="#" onclick="apiSaveSettings('reminder_msg','flash-rem');return false;" style="color:var(--accent);font-weight:600">Save template</a> <span id="flash-rem" style="display:none;color:var(--green);font-weight:600">&#10003; Saved!</span></div>
+      <!-- Time config -->
+      <div class="defbox" style="margin-bottom:12px">
+        <div class="deflabel" style="font-weight:600;font-size:13px;margin-bottom:10px">Weekly time slots <span style="font-size:11px;color:var(--text-3);font-weight:400">(used in reminder messages)</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:8px">
+          <div><div class="flabel">Pickup Hoboken time</div><input class="finput" id="time-hoboken" placeholder="e.g. 11am - 1pm"></div>
+          <div><div class="flabel">Pickup Jersey City time</div><input class="finput" id="time-jc" placeholder="e.g. 1:30pm - 2pm"></div>
+          <div><div class="flabel">Delivery time</div><input class="finput" id="time-delivery" placeholder="e.g. 10am - 1pm"></div>
+        </div>
+        <a href="#" onclick="apiSaveSettings('times','flash-times');return false;" style="color:var(--accent);font-size:12px;font-weight:600">Save times</a>
+        <span id="flash-times" style="display:none;color:var(--green);font-weight:600;font-size:12px;margin-left:8px">&#10003; Saved!</span>
       </div>
+      <!-- Templates -->
+      <div class="defbox" style="margin-bottom:12px">
+        <div class="deflabel" style="font-weight:600;font-size:13px;margin-bottom:10px">Message templates <span style="font-size:11px;color:var(--text-3);font-weight:400">Variables: {name} {order} {date} {time} {address} {items}</span></div>
+        <div style="margin-bottom:10px">
+          <div class="flabel">🏠 Pickup — Hoboken (600 Newark St)</div>
+          <textarea id="msg-hoboken" class="msginp" rows="3">Hola {name}, como estás? Te quería recordar que te esperamos {date} de {time} para retirar tu pedido en 600 Newark St, Hoboken. Cuando llegues mandanos un mensajito y enseguida bajamos con el pedido. Muchas gracias!</textarea>
+        </div>
+        <div style="margin-bottom:10px">
+          <div class="flabel">🏠 Pickup — Jersey City (25 Park Ln S)</div>
+          <textarea id="msg-jc" class="msginp" rows="3">Hola {name}, como estás? Te quería recordar que te esperamos {date} de {time} para retirar tu pedido en 25 Park Ln S, Jersey City. Cuando llegues mandanos un mensajito y enseguida bajamos con el pedido. Muchas gracias!</textarea>
+        </div>
+        <div style="margin-bottom:10px">
+          <div class="flabel">🚚 Delivery</div>
+          <textarea id="msg-delivery" class="msginp" rows="3">Hola {name}, como estás? Te quería recordar que {date} de {time} estaremos entregando tu pedido. Te va a llegar un mensaje cuando esté en camino. Muchas gracias!</textarea>
+        </div>
+        <a href="#" onclick="apiSaveSettings('msgs','flash-msgs');return false;" style="color:var(--accent);font-size:12px;font-weight:600">Save templates</a>
+        <span id="flash-msgs" style="display:none;color:var(--green);font-weight:600;font-size:12px;margin-left:8px">&#10003; Saved!</span>
+      </div>
+      <!-- Hidden legacy field for backwards compat -->
+      <textarea id="def-msg" style="display:none"></textarea>
       <div class="bulkbar">
         <span style="font-size:12px;font-weight:500;color:var(--text-2)"><span id="rem-n">0</span> selected</span>
         <button class="gbtn" id="bulk-btn" disabled onclick="sendBatch()">Send WhatsApp reminders</button>
@@ -712,6 +739,12 @@ async function apiLoadConfig(){
         var fbEl=document.getElementById('fb-msg');
         if(fbEl)fbEl.value=data.settings.feedback_msg;
       }
+      if(data.settings.msg_hoboken){var el=document.getElementById('msg-hoboken');if(el)el.value=data.settings.msg_hoboken;}
+      if(data.settings.msg_jc){var el=document.getElementById('msg-jc');if(el)el.value=data.settings.msg_jc;}
+      if(data.settings.msg_delivery){var el=document.getElementById('msg-delivery');if(el)el.value=data.settings.msg_delivery;}
+      if(data.settings.time_hoboken){var el=document.getElementById('time-hoboken');if(el)el.value=data.settings.time_hoboken;}
+      if(data.settings.time_jc){var el=document.getElementById('time-jc');if(el)el.value=data.settings.time_jc;}
+      if(data.settings.time_delivery){var el=document.getElementById('time-delivery');if(el)el.value=data.settings.time_delivery;}
     }
     console.log('Config loaded from Sheet:', Object.keys(BASE_PRODUCTS).length, 'products,', Object.keys(PRODS).length, 'presentations');
   } catch(e){
@@ -728,8 +761,22 @@ async function apiSaveSettings(key, flashId){
     } else if(key==='feedback_msg'){
       var el=document.getElementById('fb-msg');
       if(el)settings.feedback_msg=el.value;
+    } else if(key==='times'){
+      var eh=document.getElementById('time-hoboken');
+      var ej=document.getElementById('time-jc');
+      var ed=document.getElementById('time-delivery');
+      if(eh)settings.time_hoboken=eh.value;
+      if(ej)settings.time_jc=ej.value;
+      if(ed)settings.time_delivery=ed.value;
+    } else if(key==='msgs'){
+      var eh=document.getElementById('msg-hoboken');
+      var ej=document.getElementById('msg-jc');
+      var ed=document.getElementById('msg-delivery');
+      if(eh)settings.msg_hoboken=eh.value;
+      if(ej)settings.msg_jc=ej.value;
+      if(ed)settings.msg_delivery=ed.value;
     } else {
-      // save both if no key specified
+      // save all
       var remEl=document.getElementById('def-msg');
       var fbEl=document.getElementById('fb-msg');
       if(remEl)settings.reminder_msg=remEl.value;
@@ -1357,11 +1404,41 @@ function waEncode(text){
   // Standard encodeURIComponent works fine for WhatsApp — emojis included
   return encodeURIComponent(text);
 }
+function getRemTemplate(o){
+  if(o.type==='delivery'){
+    var el=document.getElementById('msg-delivery');
+    return el&&el.value?el.value:'Hola {name}, como estás? Te quería recordar que {date} de {time} estaremos entregando tu pedido en {address}. Muchas gracias!';
+  }
+  // Pickup — detect location from address
+  var addr=(o.address||'').toLowerCase();
+  var isJC=addr.indexOf('jersey')>=0||addr.indexOf('park ln')>=0||addr.indexOf('25 park')>=0;
+  if(isJC){
+    var el=document.getElementById('msg-jc');
+    return el&&el.value?el.value:'Hola {name}, como estás? Te quería recordar que te esperamos {date} de {time} en 25 Park Ln S, Jersey City. Muchas gracias!';
+  }
+  var el=document.getElementById('msg-hoboken');
+  return el&&el.value?el.value:'Hola {name}, como estás? Te quería recordar que te esperamos {date} de {time} en 600 Newark St, Hoboken. Muchas gracias!';
+}
+function getRemTime(o){
+  if(o.type==='delivery'){var el=document.getElementById('time-delivery');return el&&el.value?el.value:'TBD';}
+  var addr=(o.address||'').toLowerCase();
+  var isJC=addr.indexOf('jersey')>=0||addr.indexOf('park ln')>=0||addr.indexOf('25 park')>=0;
+  if(isJC){var el=document.getElementById('time-jc');return el&&el.value?el.value:'TBD';}
+  var el=document.getElementById('time-hoboken');return el&&el.value?el.value:'TBD';
+}
 function buildMsg(o,template){
-  var t=template||document.getElementById('def-msg').value;
-  var custom=remMsgs[o.id];var tpl=custom!==undefined?custom:t;
+  var tpl=template||(remMsgs[o.id]!==undefined?remMsgs[o.id]:getRemTemplate(o));
   var d=o.date?fmtS(new Date(o.date+'T12:00')):'TBD';
-  return tpl.replace(/{name}/g,o.name.split(' ')[0]).replace(/{order}/g,o.wix).replace(/{date}/g,d).replace(/{shift}/g,o.shift||'TBD').replace(/{type}/g,o.type==='delivery'?'delivered':'ready for pick up').replace(/{items}/g,o.items.map(function(x){return resolveItemName(x.p)+' x'+x.q;}).join(', '));
+  var time=getRemTime(o);
+  var firstName=properName(o.name).split(' ')[0];
+  return tpl
+    .replace(/{name}/g,firstName)
+    .replace(/{order}/g,o.wix)
+    .replace(/{date}/g,d)
+    .replace(/{time}/g,time)
+    .replace(/{address}/g,o.address||'')
+    .replace(/{items}/g,o.items.map(function(x){return resolveItemName(x.p)+' x'+x.q;}).join(', '))
+    .replace(/{type}/g,o.type==='delivery'?'delivered':'ready for pick up');
 }
 function sendWA(id){var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;closeModal();window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+waEncode(buildMsg(o)),'_blank');}
 
@@ -1756,10 +1833,11 @@ function renderSheet(){
 
   var html='<div class="sheet-table-wrap"><table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed">';
   var colWidths=currentRole==='admin'
-    ?'<col style="width:133px"><col style="width:110px"><col style="width:95px"><col style="width:80px"><col style="width:75px"><col style="width:207px"><col style="width:105px"><col style="width:90px"><col style="width:70px">'
-    :'<col style="width:133px"><col style="width:110px"><col style="width:95px"><col style="width:80px"><col style="width:75px"><col style="width:277px"><col style="width:105px"><col style="width:90px">';
+    ?'<col style="width:32px"><col style="width:133px"><col style="width:110px"><col style="width:95px"><col style="width:80px"><col style="width:75px"><col style="width:175px"><col style="width:105px"><col style="width:90px"><col style="width:70px">'
+    :'<col style="width:32px"><col style="width:133px"><col style="width:110px"><col style="width:95px"><col style="width:80px"><col style="width:75px"><col style="width:245px"><col style="width:105px"><col style="width:90px">';
   html+='<colgroup>'+colWidths+'</colgroup>';
   html+='<thead><tr style="border-bottom:2px solid var(--border)">';
+  html+='<th style="padding:8px 10px"><input type="checkbox" id="chk-all" onclick="toggleAllPrint(this)" title="Select all"></th>';
   cols.forEach(function(c){
     var canSort=sortable.indexOf(c.key)>=0;
     var isActive=sheetSortCol===c.key;
@@ -1770,22 +1848,23 @@ function renderSheet(){
   html+='</tr></thead><tbody>';
   filtered.forEach(function(o,i){
     var bg=i%2===0?'':'background:var(--bg)';
-    html+='<tr style="border-bottom:1px solid var(--border);cursor:pointer;vertical-align:top;'+bg+'" onclick="openModal('+o.id+')">';
-    html+='<td style="padding:7px 10px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(properName(o.name))+'</td>';
-    html+='<td style="padding:7px 10px;color:var(--text-2);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(o.wix)+'</td>';
-    html+='<td style="padding:7px 10px;white-space:nowrap">'+(o.date?fmtS(new Date(o.date+'T12:00')):'—')+'</td>';
-    html+='<td style="padding:7px 10px;white-space:nowrap">'+cap(o.shift||'—')+'</td>';
-    html+='<td style="padding:7px 10px;white-space:nowrap">'+cap(o.type||'—')+'</td>';
-    html+='<td style="padding:7px 10px">'+o.items.map(function(x){
+    html+='<tr style="border-bottom:1px solid var(--border);vertical-align:top;'+bg+'">';
+    html+='<td style="padding:7px 10px" onclick="event.stopPropagation()"><input type="checkbox" class="print-chk" data-id="'+o.id+'" onclick="event.stopPropagation()"></td>';
+    html+='<td style="padding:7px 10px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="openModal('+o.id+')">'+esc(properName(o.name))+'</td>';
+    html+='<td style="padding:7px 10px;color:var(--text-2);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="openModal('+o.id+')">'+esc(o.wix)+'</td>';
+    html+='<td style="padding:7px 10px;white-space:nowrap;cursor:pointer" onclick="openModal('+o.id+')">'+(o.date?fmtS(new Date(o.date+'T12:00')):'—')+'</td>';
+    html+='<td style="padding:7px 10px;white-space:nowrap;cursor:pointer" onclick="openModal('+o.id+')">'+cap(o.shift||'—')+'</td>';
+    html+='<td style="padding:7px 10px;white-space:nowrap;cursor:pointer" onclick="openModal('+o.id+')">'+cap(o.type||'—')+'</td>';
+    html+='<td style="padding:7px 10px;cursor:pointer" onclick="openModal('+o.id+')">'+o.items.map(function(x){
       var name=esc(resolveItemName(x.p));
       return '<div style="display:flex;justify-content:space-between;gap:8px;white-space:nowrap">'
         +'<span style="overflow:hidden;text-overflow:ellipsis">'+name+'</span>'
         +'<span style="flex-shrink:0;color:var(--text-2)">\u00d7'+x.q+'</span>'
         +'</div>';
     }).join('')+'</td>';
-    html+='<td style="padding:7px 10px"><span class="tag '+(o.fulfillment==='fulfilled'?'t-ful':'t-unf')+'">'+cap(o.fulfillment)+'</span></td>';
-    html+='<td style="padding:7px 10px"><span class="tag '+(o.delivery==='delivered'?'t-del':'t-pend')+'">'+cap(o.delivery)+'</span></td>';
-    if(currentRole==='admin')html+='<td style="padding:7px 10px">'+(o.total?'$'+o.total:'—')+'</td>';
+    html+='<td style="padding:7px 10px;cursor:pointer" onclick="openModal('+o.id+')"><span class="tag '+(o.fulfillment==='fulfilled'?'t-ful':'t-unf')+'">'+cap(o.fulfillment)+'</span></td>';
+    html+='<td style="padding:7px 10px;cursor:pointer" onclick="openModal('+o.id+')"><span class="tag '+(o.delivery==='delivered'?'t-del':'t-pend')+'">'+cap(o.delivery)+'</span></td>';
+    if(currentRole==='admin')html+='<td style="padding:7px 10px;cursor:pointer" onclick="openModal('+o.id+')">'+(o.total?'$'+o.total:'—')+'</td>';
     html+='</tr>';
   });
   html+='</tbody></table></div>';
@@ -1794,6 +1873,52 @@ function renderSheet(){
   document.getElementById('sheet-body').innerHTML=html;
 }
 
+function toggleAllPrint(cb){
+  document.querySelectorAll('.print-chk').forEach(function(el){el.checked=cb.checked;});
+}
+function printSelected(){
+  var checked=Array.from(document.querySelectorAll('.print-chk:checked'));
+  if(!checked.length)return alert('Select at least one order to print.');
+  var ids=checked.map(function(el){return String(el.dataset.id);});
+  var orders=ORDERS.filter(function(o){return ids.indexOf(String(o.id))>=0;});
+  var w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><title>Di Blu Bakery — Order Labels</title><style>');
+  w.document.write('*{box-sizing:border-box;margin:0;padding:0;}');
+  w.document.write('body{font-family:Arial,sans-serif;font-size:13px;background:#fff;}');
+  w.document.write('.label{width:90mm;min-height:60mm;border:2px solid #000;padding:10px 12px;margin:8px;display:inline-block;vertical-align:top;page-break-inside:avoid;}');
+  w.document.write('.label-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;border-bottom:1px solid #ccc;padding-bottom:6px;}');
+  w.document.write('.label-name{font-size:16px;font-weight:700;}');
+  w.document.write('.label-wix{font-size:11px;color:#555;margin-top:2px;}');
+  w.document.write('.label-type{font-size:11px;font-weight:700;padding:2px 8px;border-radius:3px;border:1px solid #000;}');
+  w.document.write('.label-meta{font-size:12px;margin-bottom:6px;color:#333;}');
+  w.document.write('.label-items{margin-bottom:6px;}');
+  w.document.write('.label-item{display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px dotted #ddd;}');
+  w.document.write('.label-address{font-size:11px;color:#333;margin-top:4px;border-top:1px solid #eee;padding-top:4px;}');
+  w.document.write('.label-notes{font-size:11px;color:#666;margin-top:4px;font-style:italic;}');
+  w.document.write('@media print{body{margin:0;}.label{margin:4px;}}');
+  w.document.write('</style></head><body>');
+  orders.forEach(function(o){
+    var d=o.date?fmtS(new Date(o.date+'T12:00')):'TBD';
+    var isDelivery=o.type==='delivery';
+    w.document.write('<div class="label">');
+    w.document.write('<div class="label-header">');
+    w.document.write('<div><div class="label-name">'+esc(properName(o.name))+'</div><div class="label-wix">'+esc(o.wix)+'</div></div>');
+    w.document.write('<div class="label-type">'+(isDelivery?'🚚 Delivery':'🏠 Pickup')+'</div>');
+    w.document.write('</div>');
+    w.document.write('<div class="label-meta">'+d+(o.shift?' · '+cap(o.shift):'')+'</div>');
+    w.document.write('<div class="label-items">');
+    o.items.forEach(function(x){
+      w.document.write('<div class="label-item"><span>'+esc(resolveItemName(x.p))+'</span><span>×'+x.q+'</span></div>');
+    });
+    w.document.write('</div>');
+    if(o.address)w.document.write('<div class="label-address">📍 '+esc(o.address)+'</div>');
+    if(o.notes)w.document.write('<div class="label-notes">📝 '+esc(o.notes)+'</div>');
+    w.document.write('</div>');
+  });
+  w.document.write('</body></html>');
+  w.document.close();
+  w.onload=function(){w.print();};
+}
 function downloadSheetCSV(){
   // Build the same filtered list as renderSheet
   var nameQ=(sheetNameFilter||'').toLowerCase().trim();
