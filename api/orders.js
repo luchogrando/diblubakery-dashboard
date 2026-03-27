@@ -21,6 +21,22 @@ module.exports = async function handler(req, res) {
   const authUser = await requireAuth(token);
   if (!authUser) return res.status(401).json({ error: 'Unauthorized' });
 
+  // ── TEMP DEBUG ──────────────────────────────────────────────
+  if (req.method === 'GET' && req.query.debug) {
+    const num = parseInt(req.query.debug);
+    try {
+      const r = await fetch('https://www.wixapis.com/ecom/v1/orders/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': process.env.WIX_API_KEY, 'wix-site-id': process.env.WIX_SITE_ID },
+        body: JSON.stringify({ filter: { number: { $eq: num } } }),
+      });
+      const data = await r.json();
+      const order = (data.orders || [])[0] || null;
+      return res.status(200).json({ raw: order, billingInfo: order?.billingInfo?.contactDetails, lineItems: order?.lineItems });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+  // ────────────────────────────────────────────────────────────
+
   try {
     if (req.method === 'POST') {
       const order = req.body;
