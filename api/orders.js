@@ -44,7 +44,23 @@ module.exports = async function handler(req, res) {
       });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
-  if (req.method === 'GET' && req.query.debugCheckout) {
+  if (req.method === 'GET' && req.query.debugById) {
+    const id = req.query.debugById;
+    try {
+      const r = await fetch(`https://www.wixapis.com/ecom/v1/orders/${id}`, {
+        headers: { 'Content-Type': 'application/json', 'Authorization': process.env.WIX_API_KEY, 'wix-site-id': process.env.WIX_SITE_ID },
+      });
+      const data = await r.json();
+      const order = data.order || null;
+      return res.status(200).json({
+        raw: order,
+        number: order?.number,
+        fulfillmentStatus: order?.fulfillmentStatus,
+        billingInfo: order?.billingInfo?.contactDetails,
+        lineItems: order?.lineItems,
+      });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
     const checkoutId = req.query.debugCheckout;
     try {
       // Try v1
