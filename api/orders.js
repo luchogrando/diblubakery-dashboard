@@ -29,9 +29,9 @@ module.exports = async function handler(req, res) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': process.env.WIX_API_KEY, 'wix-site-id': process.env.WIX_SITE_ID },
         body: JSON.stringify({
-          sort: [{ fieldName: 'number', order: 'DESC' }],
-          cursorPaging: { limit: 50 }
-        }),
+            sort: [{ fieldName: 'number', order: 'DESC' }],
+            cursorPaging: { limit: 200 }
+          }),
       });
       const data = await r.json();
       const orders = data.orders || [];
