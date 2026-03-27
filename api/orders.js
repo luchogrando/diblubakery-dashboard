@@ -32,7 +32,47 @@ module.exports = async function handler(req, res) {
       });
       const data = await r.json();
       const order = (data.orders || [])[0] || null;
-      return res.status(200).json({ raw: order, billingInfo: order?.billingInfo?.contactDetails, lineItems: order?.lineItems });
+
+      // Also try v2 API for same order
+      const r2 = await fetch(`https://www.wixapis.com/ecom/v2/orders/${order?.id}`, {
+        headers: { 'Authorization': process.env.WIX_API_KEY, 'wix-site-id': process.env.WIX_SITE_ID },
+      }).catch(() => null);
+      const d2 = r2 ? await r2.json().catch(() => null) : null;
+
+      return res.status(200).json({
+        raw: order,
+        billingInfo: order?.billingInfo?.contactDetails,
+        lineItems: order?.lineItems,
+        v2_order: d2,
+      });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+  if (req.method === 'GET' && req.query.debugCheckout) {
+    const checkoutId = req.query.debugCheckout;
+    try {
+      // Try v1
+      const r1 = await fetch(`https://www.wixapis.com/ecom/v1/checkouts/${checkoutId}`, {
+        headers: { 'Authorization': process.env.WIX_API_KEY, 'wix-site-id': process.env.WIX_SITE_ID },
+      });
+      const d1 = await r1.json();
+
+      // Try v2 orders API
+      const r2 = await fetch(`https://www.wixapis.com/ecom/v2/orders?checkoutId=${checkoutId}`, {
+        headers: { 'Authorization': process.env.WIX_API_KEY, 'wix-site-id': process.env.WIX_SITE_ID },
+      });
+      const d2 = await r2.json();
+
+      // Try checkout v2
+      const r3 = await fetch(`https://www.wixapis.com/ecom/v2/checkouts/${checkoutId}`, {
+        headers: { 'Authorization': process.env.WIX_API_KEY, 'wix-site-id': process.env.WIX_SITE_ID },
+      });
+      const d3 = await r3.json();
+
+      return res.status(200).json({
+        v1_checkout: d1,
+        v2_orders: d2,
+        v2_checkout: d3,
+      });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
   // ────────────────────────────────────────────────────────────
