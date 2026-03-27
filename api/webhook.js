@@ -219,7 +219,7 @@ function parseWixOrder(payload) {
   }
 
   return {
-    id: Date.now(),
+    id: wix.id || Date.now(),
     wix: wixOrderId,
     name,
     phone,
@@ -227,7 +227,7 @@ function parseWixOrder(payload) {
     shift,
     type,
     fulfillment: wix.fulfillmentStatus === 'FULFILLED' ? 'fulfilled' : 'unfulfilled',
-    delivery: 'pending',
+    delivery: wix.fulfillmentStatus === 'FULFILLED' ? 'delivered' : 'pending',
     customDate: isCustomDate || !date,
     recurring: false,
     notes,
