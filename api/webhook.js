@@ -50,6 +50,20 @@ module.exports = async function handler(req, res) {
     // Parse the webhook payload first
     let orderData = body.data || body;
 
+    // Log key fields to find where buyer note and variants come from
+    console.log('WEBHOOK_NOTE_FIELDS:', JSON.stringify({
+      buyerNote: orderData.buyerNote,
+      internalNote: orderData.internalNote,
+      note: orderData.note,
+      customFields: orderData.customFields,
+      number: orderData.number || orderData.orderNumber,
+    }));
+    console.log('WEBHOOK_LINEITEMS_SAMPLE:', JSON.stringify({
+      name: orderData.lineItems?.[0]?.productName,
+      descLines: orderData.lineItems?.[0]?.descriptionLines,
+      catOpts: orderData.lineItems?.[0]?.catalogReference?.options,
+    }));
+
     // If any lineItem is missing descriptionLines/variants, enrich from Wix API
     const lineItems = orderData.lineItems || [];
     const needsEnrichment = lineItems.some(item => {
@@ -60,7 +74,7 @@ module.exports = async function handler(req, res) {
 
     if (needsEnrichment && process.env.WIX_API_KEY && process.env.WIX_SITE_ID) {
       try {
-        const orderNum = orderData.number || orderData.orderNumber;
+        const orderNum = parseInt(orderData.number || orderData.orderNumber);
         const r = await fetch('https://www.wixapis.com/ecom/v1/orders/search', {
           method: 'POST',
           headers: {
@@ -68,12 +82,15 @@ module.exports = async function handler(req, res) {
             'Authorization': process.env.WIX_API_KEY,
             'wix-site-id': process.env.WIX_SITE_ID,
           },
-          body: JSON.stringify({ filter: { number: { $eq: parseInt(orderNum) } } }),
+          body: JSON.stringify({
+            sort: [{ fieldName: 'number', order: 'DESC' }],
+            cursorPaging: { limit: 50 }
+          }),
         });
         const data = await r.json();
-        const enriched = (data.orders || [])[0];
+        // Find by number manually — $eq filter is broken in Wix API
+        const enriched = (data.orders || []).find(o => parseInt(o.number) === orderNum);
         if (enriched) {
-          // Merge enriched lineItems into the payload
           orderData = { ...orderData, lineItems: enriched.lineItems || orderData.lineItems };
           console.log('Enriched order', orderNum, 'from Wix API');
         }
