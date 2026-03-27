@@ -93,6 +93,13 @@ async function readOrders() {
 }
 
 async function appendOrder(order) {
+  // Check for duplicate by wix order number
+  const existing = await readOrders();
+  const isDuplicate = existing.some(o => String(o.wix) === String(order.wix));
+  if (isDuplicate) {
+    console.log('Skipping duplicate order:', order.wix);
+    return;
+  }
   await sheetsAppend('Orders!A:Q', [orderToRow(order)]);
 }
 
