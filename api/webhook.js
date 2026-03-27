@@ -158,12 +158,13 @@ function parseWixOrder(payload) {
   const shippingTitle = shippingInfo.title || '';
   const titleLower = shippingTitle.toLowerCase();
 
-  // Type — rely on title since Wix uses STORE_PICKUP for both pickup and local delivery
-  // Real pickups have "pick-up" / "pickup" / "pick up" in the title
-  // Deliveries have titles like "Jersey City 03/21", "Manhattan 03/27" etc.
+  // Type — "Delivery ..." titles = delivery, "Pick-up/Pickup/Custom Date" = pickup
   const isPickup = titleLower.includes('pick up')
     || titleLower.includes('pickup')
-    || titleLower.includes('pick-up');
+    || titleLower.includes('pick-up')
+    || titleLower.includes('custom date')
+    || titleLower.includes('custom')
+    || (!titleLower.includes('delivery') && !titleLower.includes('manhattan') && !titleLower.includes('brooklyn') && !titleLower.includes('jersey') && !titleLower.includes('lic') && !titleLower.includes('hoboken') && !!shippingInfo.logistics?.pickupDetails);
   const type = isPickup ? 'pickup' : 'delivery';
 
   // Custom date
@@ -198,7 +199,7 @@ function parseWixOrder(payload) {
     }
   }
 
-  // Notes — recolectamos todos los campos posibles de Wix que pueden contener notas
+  // Notes — buyer note and custom fields only
   const noteFields = [
     wix.buyerNote,
     wix.internalNote,
@@ -208,13 +209,19 @@ function parseWixOrder(payload) {
     wix.customFields?.map(f => `${f.title}: ${f.value}`).join(' | '),
     wix.channelInfo?.externalOrderNotes,
   ].filter(Boolean).map(s => String(s).trim()).filter(s => s.length > 0);
+  const notes = [...new Set(noteFields)].join(' | ');
 
-  let notes = [...new Set(noteFields)].join(' | ');
+  // Address — pickup address or delivery address
+  let address = '';
   if (type === 'delivery') {
     const dest = shippingInfo.logistics?.shippingDestination?.address;
     if (dest) {
-      const addr = [dest.addressLine, dest.city, dest.postalCode].filter(Boolean).join(', ');
-      if (addr) notes = notes ? `${notes} | Delivery: ${addr}` : `Delivery: ${addr}`;
+      address = [dest.addressLine, dest.city, dest.subdivision?.replace(/^US-/, ''), dest.postalCode].filter(Boolean).join(', ');
+    }
+  } else {
+    const pickup = shippingInfo.logistics?.pickupDetails?.address;
+    if (pickup) {
+      address = [pickup.addressLine, pickup.city, pickup.postalCode].filter(Boolean).join(', ');
     }
   }
 
@@ -233,6 +240,7 @@ function parseWixOrder(payload) {
     notes,
     items,
     total,
+    address,
     edited: false,
     editedBy: '',
     createdAt: wix.createdDate || new Date().toISOString(),
