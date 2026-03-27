@@ -1211,6 +1211,7 @@ function openModal(id){
   h+='<div class="mrow"><span class="ml">Type</span><span class="mr">'+cap(o.type)+'</span></div>';
   h+='<div class="mrow"><span class="ml">Fulfillment</span><span class="mr"><span class="tag '+(o.fulfillment==='fulfilled'?'t-ful':'t-unf')+'">'+cap(o.fulfillment)+'</span></span></div>';
   h+='<div class="mrow"><span class="ml">Delivery</span><span class="mr"><span class="tag '+(o.delivery==='delivered'?'t-deliv':'t-pend')+'">'+cap(o.delivery)+'</span></span></div>';
+  if(o.address)h+='<div class="mrow"><span class="ml">Address</span><span class="mr" style="color:var(--text-2)">'+esc(o.address)+'</span></div>';
   if(o.notes)h+='<div class="mrow"><span class="ml">Notes</span><span class="mr" style="color:var(--text-2)">'+esc(o.notes)+'</span></div>';
   h+='<div class="mrow"><span class="ml">Phone</span><span class="mr" style="color:var(--blue)">'+esc(o.phone)+'</span></div>';
   h+='<div class="msec">Products ordered</div>';
@@ -1304,6 +1305,7 @@ function openEditOrderModal(id){
   h+='<div><div class="flabel">Shift</div><select class="finput" id="eo-shift"><option value="morning"'+(o.shift==='morning'?' selected':'')+'>Morning</option><option value="afternoon"'+(o.shift==='afternoon'?' selected':'')+'>Afternoon</option></select></div>';
   h+='</div>';
   h+='<div style="margin-bottom:10px"><div class="flabel">Type</div><select class="finput" id="eo-type"><option value="pickup"'+(o.type==='pickup'?' selected':'')+'>Pick up</option><option value="delivery"'+(o.type==='delivery'?' selected':'')+'>Delivery</option></select></div>';
+  h+='<div style="margin-bottom:16px"><div class="flabel">Address</div><input class="finput" type="text" id="eo-address" value="'+esc(o.address||'')+'"></div>';
   h+='<div style="margin-bottom:16px"><div class="flabel">Notes</div><input class="finput" type="text" id="eo-notes" value="'+esc(o.notes||'')+'"></div>';
   h+='<div style="margin-bottom:10px"><div class="flabel">Items</div><div id="eo-items">';
   var sortedProdsEo=Object.keys(PRODS).sort(function(a,b){return a.toLowerCase()<b.toLowerCase()?-1:1;});
@@ -1336,6 +1338,7 @@ function saveEditOrder(id){
   o.shift=document.getElementById('eo-shift').value;
   o.type=document.getElementById('eo-type').value;
   o.notes=document.getElementById('eo-notes').value.trim();
+  o.address=document.getElementById('eo-address').value.trim();
   o.edited=true;o.editedBy=currentUser;
   var rows=document.getElementById('eo-items').querySelectorAll('.product-row');
   var items=[];
@@ -1345,7 +1348,7 @@ function saveEditOrder(id){
   });
   if(!items.length)return alert('Add at least one product');
   if(items.length)o.items=items;
-  apiUpdateOrder(id,{name:o.name,phone:o.phone,wix:o.wix,date:o.date,shift:o.shift,type:o.type,notes:o.notes,items:o.items,edited:true,editedBy:currentUser});
+  apiUpdateOrder(id,{name:o.name,phone:o.phone,wix:o.wix,date:o.date,shift:o.shift,type:o.type,notes:o.notes,address:o.address,items:o.items,edited:true,editedBy:currentUser});
   closeModal();
   renderOrders();
 }
