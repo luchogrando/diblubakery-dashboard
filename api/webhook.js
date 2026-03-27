@@ -101,8 +101,28 @@ module.exports = async function handler(req, res) {
 
     const order = parseWixOrder({ ...body, data: orderData, lineItems: orderData.lineItems });
 
-    // Always write as unfulfilled — fulfillment is managed from the dashboard
-    // (Wix backoffice orders may arrive with FULFILLED status incorrectly)
+    // If phone is missing, try to fetch from Wix Contacts using contactId
+    if (!order.phone && orderData.buyerInfo?.contactId && process.env.WIX_API_KEY && process.env.WIX_SITE_ID) {
+      try {
+        const contactId = orderData.buyerInfo.contactId;
+        const r = await fetch(`https://www.wixapis.com/contacts/v4/contacts/${contactId}`, {
+          headers: {
+            'Authorization': process.env.WIX_API_KEY,
+            'wix-site-id': process.env.WIX_SITE_ID,
+          },
+        });
+        const data = await r.json();
+        const phones = data.contact?.info?.phones || [];
+        const contactPhone = phones[0]?.phone || '';
+        if (contactPhone) {
+          order.phone = contactPhone;
+          console.log('Phone fetched from Contacts for', order.wix, ':', contactPhone);
+        }
+      } catch (e) {
+        console.warn('Could not fetch phone from Contacts:', e.message);
+      }
+    }
+
     await appendOrder(order);
     console.log('New order from Wix:', order.wix, order.name, '| fulfillment:', order.fulfillment);
     return res.status(200).json({ ok: true, id: order.id });
@@ -123,9 +143,11 @@ function parseWixOrder(payload) {
     || [billing.firstName, billing.lastName].filter(Boolean).join(' ')
     || wix.buyerEmail
     || 'Unknown';
-  const phone = contact.phone
+  const phone = wix.shippingInfo?.logistics?.shippingDestination?.contactDetails?.phone
+    || contact.phone
     || contact.phones?.[0]?.phone
     || billing.phone
+    || wix.recipientInfo?.contactDetails?.phone
     || '';
 
   // Order number
