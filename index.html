@@ -1892,125 +1892,64 @@ function formatPhone(p){
   if(digits.length===11&&digits[0]==='1')return digits.slice(1,4)+'-'+digits.slice(4,7)+'-'+digits.slice(7);
   return p;
 }
+var STORE_ADDRESS='600 Newark St, Hoboken, NJ 07030';
+var STORE_NAME='Di Blu Bakery';
+var STORE_LOGO='https://static.wixstatic.com/media/5f0772_31200324f99d4a099dd4a56742cb972d~mv2.png/v1/fill/w_162,h_162,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/Logo%2050%20x%2050%20(1)_edited_edited.png';
+function buildLabelCSS(){
+  return ['*{box-sizing:border-box;margin:0;padding:0;}','body{font-family:Arial,sans-serif;background:#fff;}','.label{border:2px solid #222;border-radius:6px;padding:6mm;display:flex;flex-direction:column;gap:0;overflow:hidden;background:#fff;}','.lbl-top{display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:2px solid #222;margin-bottom:5px;}','.lbl-brand{display:flex;align-items:center;gap:7px;}','.lbl-logo{width:32px;height:32px;border-radius:50%;object-fit:cover;}','.lbl-bakery{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}','.lbl-from{font-size:10px;color:#555;margin-top:1px;}','.lbl-type{font-size:12px;font-weight:700;padding:4px 10px;border-radius:4px;border:2px solid;}','.lbl-type.delivery{background:#e6f4ea;border-color:#137333;color:#137333;}','.lbl-type.pickup{background:#e8f0fe;border-color:#1a73e8;color:#1a73e8;}','.lbl-to-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin-bottom:2px;}','.lbl-to{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;}','.lbl-name{font-size:22px;font-weight:700;line-height:1.1;}','.lbl-wix{font-size:12px;color:#555;margin-top:2px;}','.lbl-phone{font-size:14px;font-weight:600;color:#222;white-space:nowrap;align-self:flex-end;}','.lbl-addr-box{background:#f0f0f0;border:2px solid #222;border-radius:5px;padding:6px 9px;margin-bottom:5px;}','.lbl-addr-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin-bottom:2px;}','.lbl-addr{font-size:18px;font-weight:700;color:#111;line-height:1.3;}','.lbl-items-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin-bottom:3px;}','.lbl-items{flex:1;margin-bottom:5px;}','.lbl-item{display:flex;justify-content:space-between;align-items:center;font-size:15px;padding:3px 0;border-bottom:1px dotted #ccc;}','.lbl-item:last-child{border-bottom:none;}','.lbl-item-qty{font-weight:700;font-size:16px;}','.lbl-date{font-size:13px;font-weight:600;color:#333;margin-bottom:5px;}','.lbl-instr-box{border:1.5px dashed #aaa;border-radius:4px;padding:5px 8px;margin-bottom:5px;}','.lbl-instr-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin-bottom:2px;}','.lbl-instr{font-size:13px;color:#333;min-height:22px;}','.lbl-notes{font-size:12px;color:#555;font-style:italic;margin-bottom:3px;}'].join('');
+}
+function buildLabelHTML(o){
+  var d=o.date?fmtS(new Date(o.date+'T12:00')):'TBD';
+  var isDelivery=o.type==='delivery';
+  var h='<div class="label">';
+  h+='<div class="lbl-top"><div class="lbl-brand"><img class="lbl-logo" src="'+STORE_LOGO+'">';
+  h+='<div><div class="lbl-bakery">'+STORE_NAME+'</div><div class="lbl-from">'+STORE_ADDRESS+'</div></div></div>';
+  h+='<div class="lbl-type '+(isDelivery?'delivery':'pickup')+'">'+cap(o.type)+'</div></div>';
+  h+='<div class="lbl-to-label">To</div>';
+  h+='<div class="lbl-to"><div><div class="lbl-name">'+esc(properName(o.name))+'</div><div class="lbl-wix">'+esc(o.wix)+'</div></div>';
+  h+='<div class="lbl-phone">'+esc(formatPhone(o.phone||''))+'</div></div>';
+  if(isDelivery&&o.address){h+='<div class="lbl-addr-box"><div class="lbl-addr-label">Delivery address</div><div class="lbl-addr">'+esc(o.address)+'</div></div>';}
+  h+='<div class="lbl-date">'+d+'</div>';
+  h+='<div class="lbl-items-label">Order contents</div><div class="lbl-items">';
+  o.items.forEach(function(x){h+='<div class="lbl-item"><span>'+esc(resolveItemName(x.p))+'</span><span class="lbl-item-qty">×'+x.q+'</span></div>';});
+  h+='</div>';
+  if(isDelivery){h+='<div class="lbl-instr-box"><div class="lbl-instr-label">Delivery instructions</div><div class="lbl-instr">'+(o.notes?esc(o.notes):'&nbsp;')+'</div></div>';}
+  else if(o.notes){h+='<div class="lbl-notes">'+esc(o.notes)+'</div>';}
+  h+='</div>';
+  return h;
+}
 function printOrder(id){
   var o=ORDERS.find(function(x){return String(x.id)===String(id);});
   if(!o)return;
-  // Temporarily set this order as the only one to print
-  var origOrders=ORDERS;
   var w=window.open('','_blank');
-  var orders=[o];
-  w.document.write('<!DOCTYPE html><html><head><title>Di Blu Bakery — Order Label</title><style>');
-  w.document.write('*{box-sizing:border-box;margin:0;padding:0;}');
-  w.document.write('body{font-family:Arial,sans-serif;background:#fff;padding:10mm;}');
-  w.document.write('.label{border:2px solid #222;border-radius:4px;padding:7mm;display:flex;flex-direction:column;gap:5px;width:105mm;min-height:148mm;}');
-  w.document.write('.label-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #222;padding-bottom:7px;margin-bottom:2px;}');
-  w.document.write('.label-name{font-size:20px;font-weight:700;line-height:1.2;}');
-  w.document.write('.label-wix{font-size:13px;color:#555;margin-top:3px;}');
-  w.document.write('.label-type{font-size:13px;font-weight:700;padding:5px 10px;border-radius:4px;border:2px solid;white-space:nowrap;align-self:flex-start;}');
-  w.document.write('.label-type.delivery{background:#e6f4ea;border-color:#137333;color:#137333;}');
-  w.document.write('.label-type.pickup{background:#e8f0fe;border-color:#1a73e8;color:#1a73e8;}');
-  w.document.write('.label-meta{font-size:14px;font-weight:600;color:#333;}');
-  w.document.write('.label-items{flex:1;}');
-  w.document.write('.label-item{display:flex;justify-content:space-between;align-items:center;font-size:15px;padding:4px 0;border-bottom:1px dotted #ccc;}');
-  w.document.write('.label-item:last-child{border-bottom:none;}');
-  w.document.write('.label-footer{border-top:2px solid #ccc;margin-top:4px;padding-top:6px;display:flex;flex-direction:column;gap:4px;}');
-  w.document.write('.label-address{font-size:16px;font-weight:700;color:#222;line-height:1.3;}');
-  w.document.write('.label-notes{font-size:13px;color:#555;font-style:italic;}');
-  w.document.write('.label-phone{font-size:15px;font-weight:600;color:#222;}');
-  w.document.write('@media print{@page{size:A6;margin:5mm;}body{padding:0;margin:0;}}');
+  w.document.write('<!DOCTYPE html><html><head><title>Di Blu Bakery</title><style>');
+  w.document.write(buildLabelCSS());
+  w.document.write('body{padding:10mm;}.label{width:105mm;min-height:148mm;}@media print{@page{size:A6 portrait;margin:5mm;}body{padding:0;margin:0;}}');
   w.document.write('</style></head><body>');
-  var d=o.date?fmtS(new Date(o.date+'T12:00')):'TBD';
-  var isDelivery=o.type==='delivery';
-  w.document.write('<div class="label">');
-  w.document.write('<div class="label-header">');
-  w.document.write('<div><div class="label-name">'+esc(properName(o.name))+'</div><div class="label-wix">'+esc(o.wix)+'</div></div>');
-  w.document.write('<div class="label-type '+(isDelivery?'delivery':'pickup')+'">'+(isDelivery?'🚚 Delivery':'🏠 Pickup')+'</div>');
-  w.document.write('</div>');
-  w.document.write('<div class="label-meta">'+d+'</div>');
-  w.document.write('<div class="label-items">');
-  o.items.forEach(function(x){
-    w.document.write('<div class="label-item"><span>'+esc(resolveItemName(x.p))+'</span><span style="font-weight:700">×'+x.q+'</span></div>');
-  });
-  w.document.write('</div>');
-  w.document.write('<div class="label-footer">');
-  if(o.address)w.document.write('<div class="label-address">📍 '+esc(o.address)+'</div>');
-  if(o.notes)w.document.write('<div class="label-notes">📝 '+esc(o.notes)+'</div>');
-  w.document.write('<div class="label-phone">📞 '+esc(formatPhone(o.phone||''))+'</div>');
-  w.document.write('</div></div>');
+  w.document.write(buildLabelHTML(o));
   w.document.write('</body></html>');
-  w.document.close();
-  w.onload=function(){w.print();};
+  w.document.close();w.onload=function(){w.print();};
 }
-function toggleAllPrint(cb){
-  document.querySelectorAll('.print-chk').forEach(function(el){el.checked=cb.checked;});
-}
+function toggleAllPrint(cb){document.querySelectorAll('.print-chk').forEach(function(el){el.checked=cb.checked;});}
 function printSelected(){
   var checked=Array.from(document.querySelectorAll('.print-chk:checked'));
   if(!checked.length)return alert('Select at least one order to print.');
   var ids=checked.map(function(el){return String(el.dataset.id);});
   var orders=ORDERS.filter(function(o){return ids.indexOf(String(o.id))>=0;});
   var w=window.open('','_blank');
-  w.document.write('<!DOCTYPE html><html><head><title>Di Blu Bakery — Order Labels</title><style>');
-  w.document.write('*{box-sizing:border-box;margin:0;padding:0;}');
-  w.document.write('body{font-family:Arial,sans-serif;background:#fff;}');
-  w.document.write('.page{width:210mm;height:297mm;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:5mm;padding:8mm;page-break-after:always;}');
-  w.document.write('.label{border:2px solid #222;border-radius:4px;padding:7mm;display:flex;flex-direction:column;gap:5px;overflow:hidden;}');
-  w.document.write('.label-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #222;padding-bottom:7px;margin-bottom:2px;}');
-  w.document.write('.label-name{font-size:20px;font-weight:700;line-height:1.2;}');
-  w.document.write('.label-wix{font-size:13px;color:#555;margin-top:3px;}');
-  w.document.write('.label-type{font-size:13px;font-weight:700;padding:5px 10px;border-radius:4px;border:2px solid;white-space:nowrap;text-align:center;align-self:flex-start;}');
-  w.document.write('.label-type.delivery{background:#e6f4ea;border-color:#137333;color:#137333;}');
-  w.document.write('.label-type.pickup{background:#e8f0fe;border-color:#1a73e8;color:#1a73e8;}');
-  w.document.write('.label-meta{font-size:14px;font-weight:600;color:#333;}');
-  w.document.write('.label-items{flex:1;}');
-  w.document.write('.label-item{display:flex;justify-content:space-between;align-items:center;font-size:15px;padding:4px 0;border-bottom:1px dotted #ccc;}');
-  w.document.write('.label-item:last-child{border-bottom:none;}');
-  w.document.write('.label-item-name{font-weight:500;}');
-  w.document.write('.label-item-qty{font-weight:700;font-size:16px;}');
-  w.document.write('.label-footer{border-top:2px solid #ccc;margin-top:4px;padding-top:6px;display:flex;flex-direction:column;gap:4px;}');
-  w.document.write('.label-address{font-size:16px;font-weight:700;color:#222;line-height:1.3;}');
-  w.document.write('.label-notes{font-size:13px;color:#555;font-style:italic;}');
-  w.document.write('.label-phone{font-size:15px;font-weight:600;color:#222;}');
-  w.document.write('@media print{@page{size:A4;margin:0;}body{margin:0;}.page{page-break-after:always;}}');
+  w.document.write('<!DOCTYPE html><html><head><title>Di Blu Bakery</title><style>');
+  w.document.write(buildLabelCSS());
+  w.document.write('.page{width:210mm;height:297mm;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:5mm;padding:8mm;page-break-after:always;}.label{overflow:hidden;}@media print{@page{size:A4;margin:0;}body{margin:0;}.page{page-break-after:always;}}');
   w.document.write('</style></head><body>');
-
   for(var i=0;i<orders.length;i+=4){
     var pageOrders=orders.slice(i,i+4);
     w.document.write('<div class="page">');
-    pageOrders.forEach(function(o){
-      var d=o.date?fmtS(new Date(o.date+'T12:00')):'TBD';
-      var isDelivery=o.type==='delivery';
-      w.document.write('<div class="label">');
-      // Header
-      w.document.write('<div class="label-header">');
-      w.document.write('<div><div class="label-name">'+esc(properName(o.name))+'</div>');
-      w.document.write('<div class="label-wix">'+esc(o.wix)+'</div></div>');
-      w.document.write('<div class="label-type '+(isDelivery?'delivery':'pickup')+'">'+(isDelivery?'🚚 Delivery':'🏠 Pickup')+'</div>');
-      w.document.write('</div>');
-      // Date only (no shift)
-      w.document.write('<div class="label-meta">'+d+'</div>');
-      // Items
-      w.document.write('<div class="label-items">');
-      o.items.forEach(function(x){
-        w.document.write('<div class="label-item"><span class="label-item-name">'+esc(resolveItemName(x.p))+'</span><span class="label-item-qty">×'+x.q+'</span></div>');
-      });
-      w.document.write('</div>');
-      // Footer: address + notes + phone
-      w.document.write('<div class="label-footer">');
-      if(o.address)w.document.write('<div class="label-address">📍 '+esc(o.address)+'</div>');
-      if(o.notes)w.document.write('<div class="label-notes">📝 '+esc(o.notes)+'</div>');
-      w.document.write('<div class="label-phone">📞 '+esc(formatPhone(o.phone||''))+'</div>');
-      w.document.write('</div>');
-      w.document.write('</div>');
-    });
-    for(var j=pageOrders.length;j<4;j++){
-      w.document.write('<div class="label" style="border:2px dashed #ddd;"></div>');
-    }
+    pageOrders.forEach(function(o){w.document.write(buildLabelHTML(o));});
+    for(var j=pageOrders.length;j<4;j++){w.document.write('<div class="label" style="border:2px dashed #ddd;background:#fafafa;"></div>');}
     w.document.write('</div>');
   }
   w.document.write('</body></html>');
-  w.document.close();
-  w.onload=function(){w.print();};
+  w.document.close();w.onload=function(){w.print();};
 }
 function downloadSheetCSV(){
   // Build the same filtered list as renderSheet
