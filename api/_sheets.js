@@ -93,9 +93,12 @@ async function readOrders() {
 }
 
 async function appendOrder(order) {
-  // Check for duplicate by wix order number
+  // Check for duplicate by wix order number OR wix UUID
   const existing = await readOrders();
-  const isDuplicate = existing.some(o => String(o.wix) === String(order.wix));
+  const isDuplicate = existing.some(o =>
+    String(o.wix) === String(order.wix) ||
+    (order.wixId && o.wixId && String(o.wixId) === String(order.wixId))
+  );
   if (isDuplicate) {
     console.log('Skipping duplicate order:', order.wix);
     return;
