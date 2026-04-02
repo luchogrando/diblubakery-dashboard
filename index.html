@@ -1692,6 +1692,7 @@ function renderRem(){
       } else {
         html+='<button class="ebtn" onclick="openEdit('+o.id+')">Edit message</button>';
         html+='<button class="sbtn" onclick="sendWArem('+o.id+')">Send now</button>';
+        html+='<button class="ebtn" onclick="markReminderSentManual('+o.id+')" style="margin-left:4px">&#10003; Mark sent</button>';
       }
       html+='</div>';
     }
@@ -1723,10 +1724,14 @@ function confirmReminderSent(id){
   apiMarkReminderSent(o);renderRem();
 }
 function unmarkReminderSent(id){
+  if(!confirm('Mark this reminder as not sent?'))return;
   delete REMINDERS_SENT[String(id)];
-  // Remove from Sheet — we can't delete rows easily, so just reload
-  // For now just remove from local state and re-render
   renderRem();
+}
+function markReminderSentManual(id){
+  var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;
+  if(!confirm('Mark reminder as sent for '+properName(o.name)+'?'))return;
+  apiMarkReminderSent(o);renderRem();
 }
 var _batchQueue=[];var _batchType='';
 function sendBatch(){
