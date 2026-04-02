@@ -87,7 +87,7 @@ async function sheetsUpdate(range, values) {
 
 // ── PUBLIC API ───────────────────────────────────────────────────
 async function readOrders() {
-  const data = await sheetsGet('Orders!A2:S');
+  const data = await sheetsGet('Orders!A2:T');
   const rows = data.values || [];
   return rows.map(rowToOrder).filter(o => o.id);
 }
@@ -98,16 +98,17 @@ async function appendOrder(order) {
   const isDuplicate = existing.some(o =>
     String(o.wix) === String(order.wix) ||
     (order.wixId && o.wixId && String(o.wixId) === String(order.wixId))
+    || (order.wix && String(o.wix) === String(order.wix))
   );
   if (isDuplicate) {
     console.log('Skipping duplicate order:', order.wix);
     return;
   }
-  await sheetsAppend('Orders!A:S', [orderToRow(order)]);
+  await sheetsAppend('Orders!A:T', [orderToRow(order)]);
 }
 
 async function updateOrder(id, fields) {
-  const data = await sheetsGet('Orders!A:S');
+  const data = await sheetsGet('Orders!A:T');
   const rows = data.values || [];
   // Find by raw value OR by safeId match
   const rowIndex = rows.findIndex(r => String(r[0]) === String(id) || String(safeId(r[0])) === String(id));
@@ -115,7 +116,7 @@ async function updateOrder(id, fields) {
   const order = rowToOrder(rows[rowIndex]);
   const updated = { ...order, ...fields };
   const sheetRow = rowIndex + 1;
-  await sheetsUpdate(`Orders!A${sheetRow}:S${sheetRow}`, [orderToRow(updated)]);
+  await sheetsUpdate(`Orders!A${sheetRow}:T${sheetRow}`, [orderToRow(updated)]);
   return updated;
 }
 
@@ -150,6 +151,7 @@ function rowToOrder(r) {
     total:       r[16] ? parseFloat(r[16]) : null,
     address:     r[17] || '',
     manual:      r[18] === '1' || r[18] === 1,
+    wixId:       r[19] || '',
   };
 }
 
@@ -174,6 +176,7 @@ function orderToRow(o) {
     o.total != null ? String(o.total) : '',
     String(o.address || ''),
     o.manual ? '1' : '0',
+    String(o.wixId || ''),
   ];
 }
 
@@ -417,12 +420,12 @@ async function deleteOrder(id) {
   const orders = await readOrders();
   const remaining = orders.filter(o => String(o.id) !== String(id));
   const token = await getAccessToken();
-  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent('Orders!A2:S')}:clear`, {
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent('Orders!A2:T')}:clear`, {
     method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
   });
   if (remaining.length > 0) {
     const values = remaining.map(orderToRow);
-    await sheetsAppend('Orders!A:S', values);
+    await sheetsAppend('Orders!A:T', values);
   }
 }
 
