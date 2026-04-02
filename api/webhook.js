@@ -113,10 +113,14 @@ module.exports = async function handler(req, res) {
         });
         const data = await r.json();
         const phones = data.contact?.info?.phones || [];
-        const contactPhone = phones[0]?.phone || '';
-        if (contactPhone) {
-          order.phone = contactPhone;
-          console.log('Phone fetched from Contacts for', order.wix, ':', contactPhone);
+        const rawPhone = phones[0]?.phone || '';
+        if (rawPhone) {
+          const digits = rawPhone.replace(/\D/g, '');
+          order.phone = rawPhone.trim().startsWith('+') ? rawPhone.trim()
+            : digits.length === 10 ? '+1' + digits
+            : digits.length === 11 && digits[0] === '1' ? '+' + digits
+            : rawPhone;
+          console.log('Phone fetched from Contacts for', order.wix, ':', order.phone);
         }
       } catch (e) {
         console.warn('Could not fetch phone from Contacts:', e.message);
@@ -143,12 +147,24 @@ function parseWixOrder(payload) {
     || [billing.firstName, billing.lastName].filter(Boolean).join(' ')
     || wix.buyerEmail
     || 'Unknown';
-  const phone = wix.shippingInfo?.logistics?.shippingDestination?.contactDetails?.phone
+
+  // Normalize phone — add +1 if no country code
+  const normalizePhone = (p) => {
+    if (!p) return '';
+    const digits = p.replace(/\D/g, '');
+    if (p.trim().startsWith('+')) return p.trim();
+    if (digits.length === 10) return '+1' + digits;
+    if (digits.length === 11 && digits[0] === '1') return '+' + digits;
+    return p;
+  };
+  const phone = normalizePhone(
+    wix.shippingInfo?.logistics?.shippingDestination?.contactDetails?.phone
     || contact.phone
     || contact.phones?.[0]?.phone
     || billing.phone
     || wix.recipientInfo?.contactDetails?.phone
-    || '';
+    || ''
+  );
 
   // Order number
   const wixOrderId = '#' + (wix.orderNumber || wix.number || wix.id || Date.now());
