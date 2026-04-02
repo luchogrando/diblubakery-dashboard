@@ -263,6 +263,7 @@ function parseWixOrder(payload) {
     items,
     total,
     address,
+    manual: !!(wix.createdBy?.userId),
     edited: false,
     editedBy: '',
     createdAt: wix.createdDate || new Date().toISOString(),
