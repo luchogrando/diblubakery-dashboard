@@ -263,9 +263,15 @@ function parseWixOrder(payload) {
     }
   }
 
+  // Use stable numeric hash of Wix UUID so ID is always derived from the real Wix order ID
+  const wixUUID = wix.id || '';
+  const stableId = wixUUID
+    ? parseInt(wixUUID.replace(/-/g, '').substring(0, 12), 16) % 999999999 + 1
+    : Date.now();
+
   return {
-    id: Date.now(),
-    wixId: wix.id || '',
+    id: stableId,
+    wixId: wixUUID,
     wix: wixOrderId,
     name,
     phone,
