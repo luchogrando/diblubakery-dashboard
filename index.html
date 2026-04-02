@@ -1250,7 +1250,7 @@ function openModal(id){
   o.items.forEach(function(it){var pr=PRODS[it.p];if(!pr)return;Object.keys(pr.u).forEach(function(u){uT[u]=(uT[u]||0)+pr.u[u]*it.q;});});
   var dateDisplay=o.date?fmtS(new Date(o.date+'T12:00')):'Not set';
   var shiftDisplay=o.shift?(o.shift.charAt(0).toUpperCase()+o.shift.slice(1)):'Not set';
-  var h='<div class="mtitle"><div><div>'+esc(properName(o.name))+'</div><div style="font-size:11px;color:var(--text-3);font-weight:400;margin-top:2px">Wix '+esc(o.wix)+(o.recurring?' \u00b7 <span class="tag t-recurring">Recurring</span>':'')+'</div></div><button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
+  var h='<div class="mtitle"><div><div>'+esc(properName(o.name))+'</div><div style="font-size:11px;color:var(--text-3);font-weight:400;margin-top:2px">Wix '+esc(o.wix)+(o.recurring?' \u00b7 <span class="tag t-recurring">Recurring</span>':'')+(o.manual?' \u00b7 <span class="tag" style="background:#f3e5f5;color:#7b1fa2">Manual</span>':'')+'</div></div><button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
   if(o.edited)h+='<div style="font-size:11px;background:#fff0c0;border-radius:6px;padding:6px 10px;margin-bottom:10px;color:#7a5c00">\u270f Last edited by <b>'+esc(o.editedBy)+'</b></div>';
   h+='<div class="mrow"><span class="ml">Date</span><span class="mr">'+dateDisplay+'</span></div>';
   h+='<div class="mrow"><span class="ml">Shift</span><span class="mr">'+shiftDisplay+'</span></div>';
