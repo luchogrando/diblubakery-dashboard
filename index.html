@@ -538,7 +538,7 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
           <div><div class="flabel">Pickup Jersey City time</div><input class="finput" id="time-jc" placeholder="e.g. 1:30pm - 2pm"></div>
           <div><div class="flabel">Delivery time</div><input class="finput" id="time-delivery" placeholder="e.g. 10am - 1pm"></div>
         </div>
-        <a href="#" onclick="apiSaveSettings('times','flash-times');return false;" style="color:var(--accent);font-size:12px;font-weight:600">Save times</a>
+        <button class="btn accent" onclick="apiSaveSettings('times','flash-times')" style="font-size:12px;padding:5px 14px">Save times</button>
         <span id="flash-times" style="display:none;color:var(--green);font-weight:600;font-size:12px;margin-left:8px">&#10003; Saved!</span>
       </div>
       <!-- Templates -->
@@ -556,7 +556,7 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
           <div class="flabel">🚚 Delivery</div>
           <textarea id="msg-delivery" class="msginp" rows="3">Hola {name}, como estás? Te quería recordar que {date} de {time} estaremos entregando tu pedido. Te va a llegar un mensaje cuando esté en camino. Muchas gracias!</textarea>
         </div>
-        <a href="#" onclick="apiSaveSettings('msgs','flash-msgs');return false;" style="color:var(--accent);font-size:12px;font-weight:600">Save templates</a>
+        <button class="btn accent" onclick="apiSaveSettings('msgs','flash-msgs')" style="font-size:12px;padding:5px 14px">Save templates</button>
         <span id="flash-msgs" style="display:none;color:var(--green);font-weight:600;font-size:12px;margin-left:8px">&#10003; Saved!</span>
       </div>
       <!-- Hidden legacy field for backwards compat -->
@@ -787,6 +787,8 @@ async function apiSaveSettings(key, flashId){
       var f=document.getElementById(flashId);
       if(f){f.style.display='inline';setTimeout(function(){f.style.display='none';},2500);}
     }
+    // Re-render reminders so messages update immediately
+    if(key==='times'||key==='msgs'||key==='reminder_msg'){renderRem();}
   } catch(e){ console.warn('Could not save settings:',e.message); }
 }
 async function apiSaveConfig(){
@@ -1298,7 +1300,7 @@ function saveDateTime(id){
     o.date=dv.value;o.shift=sv.value;o.edited=true;o.editedBy=currentUser;
     apiUpdateOrder(id,{date:o.date,shift:o.shift,edited:true,editedBy:currentUser});
   }
-  openModal(id);renderOrders();
+  closeModal();renderOrders();
 }
 function setFulfillment(id){
   var o=ORDERS.find(function(x){return String(x.id)===String(id);});
@@ -1673,9 +1675,10 @@ function renderRem(){
     var on=!!remSel[o.id];var msg=remMsgs[o.id]!==undefined?remMsgs[o.id]:buildMsg(o);var editing=!!remMsgs['edit_'+o.id];
     var d=o.date?fmtS(new Date(o.date+'T12:00')):'Custom date';
     var sent=!!REMINDERS_SENT[String(o.id)];
-    html+='<div class="rcard" style="'+(sent?'opacity:0.5;pointer-events:none;background:var(--bg)':'')+'"><div class="rtop">';
+    html+='<div class="rcard" style="'+(sent?'opacity:0.6;background:var(--bg)':'')+'"><div class="rtop">';
     html+='<div class="rchk'+(on?' on':'')+'" onclick="toggleRem('+o.id+')">'+(on?'&#x2713;':'')+'</div>';
-    html+='<div class="rinfo"><div class="rname">'+esc(properName(o.name))+'</div><div class="rord">Wix '+esc(o.wix)+'</div>';
+    html+='<div class="rinfo"><div class="rname">'+esc(properName(o.name))+'</div>';
+    html+='<div class="rord">'+esc(formatPhone(o.phone||'—'))+'  ·  Wix '+esc(o.wix)+'</div>';
     html+='<div class="rsub">'+d+(o.shift?' \u00b7 '+cap(o.shift):'')+' \u00b7 '+cap(o.type)+'</div>';
     if(editing){html+='<textarea id="re'+o.id+'" class="msginp" rows="3" style="margin-top:8px">'+esc(msg)+'</textarea><div style="display:flex;gap:7px;margin-top:6px"><button class="sbtn" onclick="saveEdit('+o.id+')">Save</button><button class="ebtn" onclick="cancelEdit('+o.id+')">Cancel</button></div>';}
     else{html+='<div class="rmsgbox" onclick="openEdit('+o.id+')">'+esc(msg)+'</div>';}
@@ -1685,6 +1688,7 @@ function renderRem(){
       if(sent){
         var sr=REMINDERS_SENT[String(o.id)];
         html+='<span style="font-size:11px;color:var(--green);font-weight:600">&#10003; Sent by '+esc(sr.sentBy||'')+'</span>';
+        html+='<button class="ebtn" onclick="unmarkReminderSent('+o.id+');renderRem();" style="margin-left:8px">Undo</button>';
       } else {
         html+='<button class="ebtn" onclick="openEdit('+o.id+')">Edit message</button>';
         html+='<button class="sbtn" onclick="sendWArem('+o.id+')">Send now</button>';
@@ -1703,7 +1707,25 @@ function sendWArem(id){
   var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;
   if(REMINDERS_SENT[String(o.id)])return;
   window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+waEncode(buildMsg(o)),'_blank');
-  apiMarkReminderSent(o);
+  // Ask confirmation after opening WA
+  setTimeout(function(){
+    var h='<div class="mtitle">Reminder sent? <button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
+    h+='<div style="font-size:14px;font-weight:600;margin-bottom:4px">'+esc(properName(o.name))+'</div>';
+    h+='<div style="font-size:13px;color:var(--text-2);margin-bottom:16px">'+esc(formatPhone(o.phone||''))+'</div>';
+    h+='<button class="btn accent" onclick="confirmReminderSent('+o.id+');closeModal();" style="width:100%;padding:11px;font-size:13px;margin-bottom:8px">✅ Yes, sent via WhatsApp</button>';
+    h+='<button class="btn" onclick="closeModal();" style="width:100%;padding:11px;font-size:13px">❌ Not sent, keep pending</button>';
+    document.getElementById('mbox').innerHTML=h;
+    document.getElementById('overlay').className='overlay on';
+  }, 500);
+}
+function confirmReminderSent(id){
+  var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;
+  apiMarkReminderSent(o);renderRem();
+}
+function unmarkReminderSent(id){
+  delete REMINDERS_SENT[String(id)];
+  // Remove from Sheet — we can't delete rows easily, so just reload
+  // For now just remove from local state and re-render
   renderRem();
 }
 var _batchQueue=[];var _batchType='';
@@ -1722,24 +1744,28 @@ function sendNextInBatch(){
   if(!_batchQueue.length){renderRem();renderFeedback();return;}
   var o=_batchQueue.shift();
   if(_batchType==='fb'){FEEDBACK_SENT[o.id]=true;}
-  if(_batchType==='rem'){apiMarkReminderSent(o);}
   window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+waEncode(_batchType==='fb'?buildFbMsg(o):buildMsg(o)),'_blank');
-  if(_batchQueue.length>0){
-    var next=_batchQueue[0];
-    var h='<div class="mtitle">Sending batch <button class="xbtn" onclick="closeModal();_batchQueue=[];">&#x00D7;</button></div>';
-    h+='<div style="font-size:12px;color:var(--text-2);margin-bottom:6px">Just sent to <b>'+esc(properName(o.name))+'</b> ('+esc(o.wix)+')</div>';
-    h+='<div style="margin-bottom:14px;padding:10px 12px;background:var(--accent-light);border-radius:8px;">';
-    h+='<div style="font-size:11px;color:var(--text-3);margin-bottom:2px">Next up ('+_batchQueue.length+' remaining)</div>';
-    h+='<div style="font-size:14px;font-weight:700">'+esc(next.name)+'</div>';
-    h+='<div style="font-size:12px;color:var(--text-2)">'+esc(next.wix)+(next.date?' · '+fmtS(new Date(next.date+'T12:00')):'')+'</div>';
-    h+='</div>';
-    h+='<button class="btn accent" onclick="closeModal();sendNextInBatch();" style="width:100%;padding:11px;font-size:13px">Send next &rarr;</button>';
-    h+='<button class="btn" onclick="closeModal();_batchQueue=[];" style="width:100%;margin-top:8px;padding:9px">Stop sending</button>';
+  setTimeout(function(){
+    var next=_batchQueue.length>0?_batchQueue[0]:null;
+    var h='<div class="mtitle">Sent? <button class="xbtn" onclick="closeModal();_batchQueue=[];">&#x00D7;</button></div>';
+    h+='<div style="font-size:14px;font-weight:600;margin-bottom:2px">'+esc(properName(o.name))+'</div>';
+    h+='<div style="font-size:13px;color:var(--text-2);margin-bottom:12px">'+esc(formatPhone(o.phone||''))+'</div>';
+    if(next){
+      h+='<div style="margin-bottom:12px;padding:10px 12px;background:var(--accent-light);border-radius:8px;">';
+      h+='<div style="font-size:11px;color:var(--text-3);margin-bottom:2px">Next up ('+_batchQueue.length+' remaining)</div>';
+      h+='<div style="font-size:14px;font-weight:700">'+esc(properName(next.name))+'</div>';
+      h+='<div style="font-size:12px;color:var(--text-2)">'+esc(formatPhone(next.phone||''))+(next.date?' · '+fmtS(new Date(next.date+'T12:00')):'')+'</div>';
+      h+='</div>';
+    }
+    h+='<button class="btn accent" onclick="';
+    if(_batchType==='rem')h+='confirmReminderSent('+o.id+');';
+    h+=(next?'closeModal();sendNextInBatch();':'closeModal();renderRem();renderFeedback();');
+    h+='" style="width:100%;padding:11px;font-size:13px;margin-bottom:8px">'+(next?'✅ Sent — Send next →':'✅ Sent — Done')+'</button>';
+    h+='<button class="btn" onclick="'+(next?'closeModal();sendNextInBatch();':'closeModal();renderRem();renderFeedback();')+'" style="width:100%;padding:9px">❌ Not sent — '+(next?'Skip & continue':'Skip')+'</button>';
+    h+='<button class="btn" onclick="closeModal();_batchQueue=[];" style="width:100%;margin-top:6px;padding:9px">Stop sending</button>';
     document.getElementById('mbox').innerHTML=h;
     document.getElementById('overlay').className='overlay on';
-  } else {
-    renderRem();renderFeedback();
-  }
+  }, 500);
 }
 
 function undoDismiss(id, dateKey){
