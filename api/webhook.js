@@ -31,12 +31,13 @@ module.exports = async function handler(req, res) {
       eventType === 'wix.ecom.v1.order_not_fulfilled'
     ) {
       const orderNumber = '#' + (wix.number || wix.orderNumber);
+      const wixUUID = wix.id || '';
       const fulfillmentStatus = wix.fulfillmentStatus === 'FULFILLED' ? 'fulfilled' : 'unfulfilled';
       console.log('Fulfillment update:', orderNumber, '->', fulfillmentStatus);
 
-      // Find the order in the Sheet by wix order number and update it
+      // Find the order in the Sheet by wix UUID first, then by order number
       const orders = await readOrders();
-      const existing = orders.find(o => o.wix === orderNumber);
+      const existing = orders.find(o => (wixUUID && o.wixId === wixUUID) || o.wix === orderNumber);
       if (existing) {
         await updateOrder(existing.id, { fulfillment: fulfillmentStatus });
         console.log('Updated fulfillment in Sheet:', orderNumber, fulfillmentStatus);
@@ -74,25 +75,43 @@ module.exports = async function handler(req, res) {
 
     if (needsEnrichment && process.env.WIX_API_KEY && process.env.WIX_SITE_ID) {
       try {
-        const orderNum = parseInt(orderData.number || orderData.orderNumber);
-        const r = await fetch('https://www.wixapis.com/ecom/v1/orders/search', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': process.env.WIX_API_KEY,
-            'wix-site-id': process.env.WIX_SITE_ID,
-          },
-          body: JSON.stringify({
-            sort: [{ fieldName: 'number', order: 'DESC' }],
-            cursorPaging: { limit: 50 }
-          }),
-        });
-        const data = await r.json();
-        // Find by number manually — $eq filter is broken in Wix API
-        const enriched = (data.orders || []).find(o => parseInt(o.number) === orderNum);
+        const wixUUID = orderData.id || '';
+        let enriched = null;
+
+        if (wixUUID) {
+          // Fetch directly by UUID — most reliable
+          const r = await fetch(`https://www.wixapis.com/ecom/v1/orders/${wixUUID}`, {
+            headers: {
+              'Authorization': process.env.WIX_API_KEY,
+              'wix-site-id': process.env.WIX_SITE_ID,
+            },
+          });
+          const data = await r.json();
+          enriched = data.order || null;
+        }
+
+        if (!enriched) {
+          // Fallback: search by number manually
+          const orderNum = parseInt(orderData.number || orderData.orderNumber);
+          const r = await fetch('https://www.wixapis.com/ecom/v1/orders/search', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': process.env.WIX_API_KEY,
+              'wix-site-id': process.env.WIX_SITE_ID,
+            },
+            body: JSON.stringify({
+              sort: [{ fieldName: 'number', order: 'DESC' }],
+              cursorPaging: { limit: 50 }
+            }),
+          });
+          const data = await r.json();
+          enriched = (data.orders || []).find(o => parseInt(o.number) === orderNum) || null;
+        }
+
         if (enriched) {
           orderData = { ...orderData, lineItems: enriched.lineItems || orderData.lineItems };
-          console.log('Enriched order', orderNum, 'from Wix API');
+          console.log('Enriched order', orderData.number, 'from Wix API');
         }
       } catch (e) {
         console.warn('Could not enrich order from Wix API:', e.message);
