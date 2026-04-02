@@ -130,9 +130,9 @@ body{font-family:'Google Sans','Roboto','DM Sans',sans-serif;background:var(--bg
 .inline-edit{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px;}
 .inline-edit select,.inline-edit input{padding:5px 8px;border:1px solid var(--border-dark);border-radius:6px;font-size:12px;background:var(--surface);font-family:inherit;}
 .inline-edit button{padding:5px 11px;border:none;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;font-size:12px;font-weight:700;}
-.stitle{font-size:14px;font-weight:700;margin-bottom:5px;}
-.ssub{font-size:11px;color:var(--text-3);margin-bottom:10px;}
-.twrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;margin-bottom:22px;background:var(--surface);}
+.stitle{font-size:13px;font-weight:700;margin-bottom:3px;}
+.ssub{font-size:10px;color:var(--text-3);margin-bottom:6px;}
+.twrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;margin-bottom:14px;background:var(--surface);}
 table.stable{border-collapse:collapse;width:100%;min-width:max-content;font-size:13px;}
 .stable thead th{padding:12px 14px;font-size:11px;font-weight:500;color:var(--text-2);background:#f8f9fa;border-bottom:2px solid var(--border);white-space:nowrap;text-align:right;letter-spacing:.5px;text-transform:uppercase;}
 .stable thead th:first-child{text-align:left;min-width:200px;position:sticky;left:0;background:#faf9f6;z-index:2;}
@@ -267,7 +267,7 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
 .fb-sub{font-size:11px;color:var(--text-2);margin-top:2px;}
 .fb-sent{font-size:10px;color:var(--green);font-weight:600;margin-top:3px;}
 /* ── LOGIN ── */
-.login-screen{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;}
+.spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto;}@keyframes spin{to{transform:rotate(360deg);}}.login-screen{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;}
 .login-card{background:var(--surface);border:none;border-radius:8px;padding:40px 36px;width:100%;max-width:400px;text-align:center;box-shadow:var(--shadow-2);}
 .login-logo{font-family:'DM Serif Display',serif;font-size:26px;margin-bottom:6px;}.login-logo em{color:var(--accent);font-style:normal;}
 .login-subtitle{font-size:12px;color:var(--text-3);margin-bottom:28px;}
@@ -465,7 +465,7 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
           <div style="font-size:13px;font-weight:600;color:var(--recurring);margin-bottom:10px">Recurring order suggestions for this week</div>
           <div id="rec-inline-cards"></div>
         </div>
-        <div id="orders-body"></div>
+        <div id="orders-body"><div style="padding:48px;text-align:center;color:var(--text-3)"><div class="spinner"></div><div style="margin-top:12px;font-size:13px">Loading orders...</div></div></div>
       </div>
 
       <!-- SHEET BODY -->
@@ -1266,7 +1266,7 @@ function openModal(id){
   h+='<div class="msec">Products ordered</div>';
   o.items.forEach(function(it){h+='<div class="mrow"><span class="ml">'+esc(resolveItemName(it.p))+'</span><span class="mr">\u00d7'+it.q+'</span></div>';});
   h+='<div class="msec">Units to produce</div>';
-  Object.keys(uT).forEach(function(u){h+='<div class="mrow"><span class="ml">'+(UL[u]||u)+'</span><span class="mr" style="font-weight:700">'+uT[u]+'</span></div>';});
+  Object.keys(uT).forEach(function(u){h+='<div class="mrow"><span class="ml">'+(UL[u]||(BASE_PRODUCTS[u]&&BASE_PRODUCTS[u].name)||u)+'</span><span class="mr" style="font-weight:700">'+uT[u]+'</span></div>';});
   h+='<div class="mactions">';
   if(o.fulfillment==='fulfilled'){
     h+='<button class="btn" onclick="undoFulfillment('+id+')" style="width:100%;padding:11px;font-size:13px">Undo Fulfilled</button>';
@@ -1553,7 +1553,7 @@ function renderProd(){
   if(!allUnits.length)uh+='<tr><td colspan="'+(days.length+2)+'" style="padding:16px;color:var(--text-3)">No orders this week</td></tr>';
   else allUnits.forEach(function(u){
     var tot=isos.reduce(function(s,d){return s+(unitMap[d][u]||0);},0);
-    uh+='<tr><td>'+(UL[u]||u)+'</td>';
+    uh+='<tr><td>'+(UL[u]||BASE_PRODUCTS[u]&&BASE_PRODUCTS[u].name||u)+'</td>';
     uh+=isos.map(function(d){var v=unitMap[d][u];return v?'<td class="has"><span class="ulink" onclick="showPopup(event,\''+d+'\',\''+u+'\')">'+v+'</span></td>':'<td class="zero">\u2014</td>';}).join('');
     uh+='<td class="tot"><span class="ulink" onclick="showPopup(event,\'all\',\''+u+'\')">'+tot+'</span></td></tr>';
   });
@@ -1589,7 +1589,7 @@ function showPopup(e,day,unit){
   });});
   var total=Object.values(combined).reduce(function(s,v){return s+v.n;},0);
   if(!total)return;
-  var title=(UL[unit]||unit)+(day==='all'?' \u00b7 full week':' \u00b7 '+fmtS(new Date(day+'T12:00')));
+  var title=(UL[unit]||(BASE_PRODUCTS[unit]&&BASE_PRODUCTS[unit].name)||unit)+(day==='all'?' \u00b7 full week':' \u00b7 '+fmtS(new Date(day+'T12:00')));
   var h='<div class="mtitle">'+esc(title)+'<button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
   // Split into presentations and direct recurring
   var fromPres=Object.values(combined).filter(function(v){return v.fromPres;});
@@ -2040,13 +2040,22 @@ function renderFeedback(){
   var html='';
   delivered.forEach(function(o){
     var on=!!fbSel[o.id];var sent=!!FEEDBACK_SENT[o.id];
-    html+='<div class="fb-card"><div class="fb-check'+(on?' on':'')+'" onclick="toggleFb('+o.id+')">'+(on?'&#x2713;':'')+'</div>';
+    html+='<div class="fb-card" style="'+(sent?'opacity:0.6;background:var(--bg);':'')+'flex-direction:column;gap:0;">';
+    html+='<div style="display:flex;align-items:flex-start;gap:10px">';
+    html+='<div class="fb-check'+(on?' on':'')+'" onclick="toggleFb('+o.id+')">'+(on?'&#x2713;':'')+'</div>';
     html+='<div class="fb-info"><div class="fb-name">'+esc(properName(o.name))+'</div>';
-    html+='<div class="fb-sub">Wix '+esc(o.wix)+' \u00b7 '+(o.date?fmtS(new Date(o.date+'T12:00')):'')+'</div>';
-    html+='<div class="fb-sub" style="margin-top:2px">'+o.items.map(function(i){return i.p+' \u00d7'+i.q;}).join(', ')+'</div>';
-    if(sent)html+='<div class="fb-sent">&#x2713; Feedback sent</div>';
+    html+='<div class="fb-sub">'+esc(formatPhone(o.phone||'—'))+'  ·  Wix '+esc(o.wix)+' · '+(o.date?fmtS(new Date(o.date+'T12:00')):'')+'</div>';
+    html+='<div class="fb-sub" style="margin-top:2px">'+o.items.map(function(i){return esc(resolveItemName(i.p))+' ×'+i.q;}).join(', ')+'</div>';
+    html+='</div></div>';
+    html+='<div style="display:flex;gap:7px;margin-top:8px;margin-left:29px">';
+    if(sent){
+      html+='<span style="font-size:12px;color:var(--green);font-weight:600">&#10003; Feedback sent</span>';
+      html+='<button class="ebtn" onclick="unmarkFeedbackSent('+o.id+')" style="margin-left:8px">Undo</button>';
+    } else {
+      html+='<button class="sbtn" onclick="sendFbSingle('+o.id+')">Send now</button>';
+      html+='<button class="ebtn" onclick="markFeedbackSentManual('+o.id+')" style="margin-left:4px">&#10003; Mark sent</button>';
+    }
     html+='</div>';
-    html+='<button class="sbtn" onclick="sendFbSingle('+o.id+')">Send now</button>';
     html+='</div>';
   });
   if(!html)html='<div style="padding:32px;text-align:center;color:var(--text-3);font-size:13px">No delivered orders yet</div>';
@@ -2055,10 +2064,29 @@ function renderFeedback(){
 function toggleFb(id){fbSel[id]=!fbSel[id];renderFeedback();}
 function buildFbMsg(o){
   var t=document.getElementById('fb-msg').value;
-  return t.replace(/{name}/g,o.name.split(' ')[0]).replace(/{order}/g,o.wix).replace(/{items}/g,o.items.map(function(x){return resolveItemName(x.p)+' x'+x.q;}).join(', '));
+  var firstName=properName(o.name).split(' ')[0];
+  return t.replace(/{name}/g,firstName).replace(/{order}/g,o.wix).replace(/{items}/g,o.items.map(function(x){return resolveItemName(x.p)+' x'+x.q;}).join(', '));
 }
-function sendFbSingle(id){var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;FEEDBACK_SENT[id]=true;window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+waEncode(buildFbMsg(o)),'_blank');renderFeedback();}
-
+function sendFbSingle(id){
+  var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;
+  window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+waEncode(buildFbMsg(o)),'_blank');
+  setTimeout(function(){
+    var h='<div class="mtitle">Feedback sent? <button class="xbtn" onclick="closeModal()">&#x00D7;</button></div>';
+    h+='<div style="font-size:14px;font-weight:600;margin-bottom:4px">'+esc(properName(o.name))+'</div>';
+    h+='<div style="font-size:13px;color:var(--text-2);margin-bottom:16px">'+esc(formatPhone(o.phone||''))+'</div>';
+    h+='<button class="btn accent" onclick="confirmFeedbackSent('+o.id+');closeModal();" style="width:100%;padding:11px;font-size:13px;margin-bottom:8px">✅ Yes, sent via WhatsApp</button>';
+    h+='<button class="btn" onclick="closeModal();" style="width:100%;padding:11px;font-size:13px">❌ Not sent, keep pending</button>';
+    document.getElementById('mbox').innerHTML=h;
+    document.getElementById('overlay').className='overlay on';
+  },500);
+}
+function confirmFeedbackSent(id){FEEDBACK_SENT[id]=true;renderFeedback();}
+function unmarkFeedbackSent(id){if(!confirm('Mark this feedback as not sent?'))return;delete FEEDBACK_SENT[id];renderFeedback();}
+function markFeedbackSentManual(id){
+  var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;
+  if(!confirm('Mark feedback as sent for '+properName(o.name)+'?'))return;
+  FEEDBACK_SENT[id]=true;renderFeedback();
+}
 
 function renderRecurring(){
   var listHtml='';
@@ -2302,7 +2330,7 @@ function renderAdminPres(){
     if(!pr.u||Object.keys(pr.u).length===0)return; // shown above
     var sid='cb_'+name.replace(/[^a-z0-9]/gi,'_');
     var units=pr.u||{};
-    var summary=Object.keys(units).filter(function(u){return units[u]>0;}).map(function(u){return units[u]+' '+(UL[u]||u);}).join(', ')||'<span style="color:var(--text-3)">no units defined</span>';
+    var summary=Object.keys(units).filter(function(u){return units[u]>0;}).map(function(u){return units[u]+' '+(UL[u]||(BASE_PRODUCTS[u]&&BASE_PRODUCTS[u].name)||u);}).join(', ')||'<span style="color:var(--text-3)">no units defined</span>';
     html+='<div class="combo-row">';
     html+='<div class="combo-hd" onclick="toggleCombo(\''+sid+'\')">';
     html+='<span class="combo-name">'+esc(name)+'</span>';
