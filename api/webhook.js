@@ -248,7 +248,8 @@ function parseWixOrder(payload) {
   }
 
   return {
-    id: wix.id || Date.now(),
+    id: Date.now(),
+    wixId: wix.id || '',
     wix: wixOrderId,
     name,
     phone,
