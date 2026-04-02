@@ -109,7 +109,8 @@ async function appendOrder(order) {
 async function updateOrder(id, fields) {
   const data = await sheetsGet('Orders!A:S');
   const rows = data.values || [];
-  const rowIndex = rows.findIndex(r => String(r[0]) === String(id));
+  // Find by raw value OR by safeId match
+  const rowIndex = rows.findIndex(r => String(r[0]) === String(id) || String(safeId(r[0])) === String(id));
   if (rowIndex < 0) throw new Error('Order not found: ' + id);
   const order = rowToOrder(rows[rowIndex]);
   const updated = { ...order, ...fields };
@@ -119,9 +120,18 @@ async function updateOrder(id, fields) {
 }
 
 // ── ROW CONVERSION ───────────────────────────────────────────────
+function safeId(val) {
+  // If val looks like a UUID (contains dashes), convert to a numeric hash
+  if (val && /^[0-9a-f-]{36}$/i.test(val)) {
+    // Simple numeric hash from UUID
+    return parseInt(val.replace(/-/g, '').substring(0, 12), 16) % 999999999 + 1;
+  }
+  return val || '';
+}
+
 function rowToOrder(r) {
   return {
-    id:          r[0]  || '',
+    id:          safeId(r[0]),
     wix:         r[1]  || '',
     name:        r[2]  || '',
     phone:       r[3]  || '',
