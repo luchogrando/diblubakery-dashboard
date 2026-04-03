@@ -459,6 +459,9 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
           <!-- Search + time filter + actions -->
           <input type="text" id="sheet-name-filter" class="finput" placeholder="Search..." oninput="sheetNameFilter=this.value;renderSheet()" style="width:130px;padding:5px 10px;font-size:12px;">
           <select class="finput" style="width:130px;padding:5px 10px;font-size:12px;" onchange="sheetTimeFilter=this.value;renderSheet()">
+            <option value="this_week">This week</option>
+            <option value="last_week">Last week</option>
+            <option value="next_week">Next week</option>
             <option value="current_month">This month</option>
             <option value="last_month">Last month</option>
             <option value="next_month">Next month</option>
@@ -1905,6 +1908,9 @@ function switchOrderTab(tab){
   if(cal2){cal2.style.background=tab==='calendar'?accent:surface;cal2.style.color=tab==='calendar'?white:muted;}
   if(sh2){sh2.style.background=tab==='sheet'?accent:surface;sh2.style.color=tab==='sheet'?white:muted;}
   if(tab==='sheet')renderSheet();
+  // Hide week nav on List tab — it uses time dropdown instead
+  var wn=document.getElementById('topbar-weeknav');
+  if(wn)wn.style.display=tab==='sheet'?'none':'flex';
 }
 
 function showSheet(){
@@ -1939,6 +1945,13 @@ function renderSheet(){
     var d=new Date(o.date+'T12:00');
     var y=d.getFullYear(),m=d.getMonth();
     var ny=now.getFullYear(),nm=now.getMonth();
+    // Week helpers
+    var startOfWeek=function(dt,offset){var s=new Date(dt);s.setDate(s.getDate()-s.getDay()+1+(offset||0)*7);s.setHours(0,0,0,0);return s;};
+    var thisMonday=startOfWeek(now,0);
+    var thisSunday=new Date(thisMonday);thisSunday.setDate(thisMonday.getDate()+6);thisSunday.setHours(23,59,59,999);
+    if(sheetTimeFilter==='this_week')return d>=thisMonday&&d<=thisSunday;
+    if(sheetTimeFilter==='last_week'){var lm2=startOfWeek(now,-1);var ls=new Date(lm2);ls.setDate(lm2.getDate()+6);ls.setHours(23,59,59,999);return d>=lm2&&d<=ls;}
+    if(sheetTimeFilter==='next_week'){var nm2=startOfWeek(now,1);var ns=new Date(nm2);ns.setDate(nm2.getDate()+6);ns.setHours(23,59,59,999);return d>=nm2&&d<=ns;}
     if(sheetTimeFilter==='current_month')return y===ny&&m===nm;
     if(sheetTimeFilter==='last_month'){var lm=nm===0?11:nm-1,ly=nm===0?ny-1:ny;return y===ly&&m===lm;}
     if(sheetTimeFilter==='next_month'){var xm=(nm+1)%12,xy=nm===11?ny+1:ny;return y===xy&&m===xm;}
@@ -2107,6 +2120,12 @@ function downloadSheetCSV(){
     var d=new Date(o.date+'T12:00');
     var y=d.getFullYear(),m=d.getMonth();
     var ny=now.getFullYear(),nm=now.getMonth();
+    var startOfWeek=function(dt,offset){var s=new Date(dt);s.setDate(s.getDate()-s.getDay()+1+(offset||0)*7);s.setHours(0,0,0,0);return s;};
+    var thisMonday=startOfWeek(now,0);
+    var thisSunday=new Date(thisMonday);thisSunday.setDate(thisMonday.getDate()+6);thisSunday.setHours(23,59,59,999);
+    if(sheetTimeFilter==='this_week')return d>=thisMonday&&d<=thisSunday;
+    if(sheetTimeFilter==='last_week'){var lm2=startOfWeek(now,-1);var ls=new Date(lm2);ls.setDate(lm2.getDate()+6);ls.setHours(23,59,59,999);return d>=lm2&&d<=ls;}
+    if(sheetTimeFilter==='next_week'){var nm2=startOfWeek(now,1);var ns=new Date(nm2);ns.setDate(nm2.getDate()+6);ns.setHours(23,59,59,999);return d>=nm2&&d<=ns;}
     if(sheetTimeFilter==='current_month')return y===ny&&m===nm;
     if(sheetTimeFilter==='last_month'){var lm=nm===0?11:nm-1,ly=nm===0?ny-1:ny;return y===ly&&m===lm;}
     if(sheetTimeFilter==='next_month'){var xm=(nm+1)%12,xy=nm===11?ny+1:ny;return y===xy&&m===xm;}
