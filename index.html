@@ -58,7 +58,7 @@ body{font-family:'Google Sans','Roboto','DM Sans',sans-serif;background:var(--bg
 .topbar-total{font-size:13px;font-weight:500;color:var(--green);margin-right:4px;}
 .page{display:none;padding:0;max-width:none;min-height:calc(100vh - 48px);}
 .page-header{background:var(--surface);padding:0 24px;position:sticky;top:48px;z-index:25;}.page-header:not(:empty){border-bottom:1px solid var(--border);box-shadow:0 1px 2px rgba(60,64,67,.1);}
-.page-body{padding:20px 24px;max-width:1400px;}
+.page-body{padding:20px 24px;max-width:1400px;overflow-y:auto;}
 .page.on{display:block;}
 .btn{padding:8px 16px;border-radius:4px;border:1px solid var(--border-dark);background:var(--surface);cursor:pointer;font-size:14px;font-weight:500;color:var(--text);font-family:inherit;transition:box-shadow .15s,background .15s;letter-spacing:.25px;}
 .btn:hover{background:#f1f3f4;box-shadow:var(--shadow-1);}
@@ -104,7 +104,7 @@ body{font-family:'Google Sans','Roboto','DM Sans',sans-serif;background:var(--bg
 .order-tab{padding:12px 20px;font-size:14px;font-weight:500;color:var(--text-2);cursor:pointer;border:none;background:none;border-bottom:3px solid transparent;margin-bottom:-1px;transition:all .2s;letter-spacing:.25px;}
 .order-tab.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:500;}
 .sheet-table-wrap{overflow-x:auto;}
-.sheet-table-wrap table thead tr{position:sticky;top:0;z-index:2;background:var(--bg);}
+.sheet-table-wrap table thead tr{position:sticky;top:-20px;z-index:2;background:var(--bg);}
 .sort-arrow{font-size:10px;margin-left:3px;color:var(--text-3);}
 .custom-card{border-left:3px solid var(--purple)!important;}
 .card:hover{box-shadow:var(--shadow-2);border-color:transparent;}
@@ -522,21 +522,13 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
 
   <!-- TASKS -->
   <div class="page" id="page-tasks">
-    <div class="page-header">
-      <div class="week-bar">
-        <span id="t-wlabel" style="display:none"></span>
-      </div>
-    </div>
+    <span id="t-wlabel" style="display:none"></span>
     <div class="page-body" id="tasks-body"></div>
   </div>
 
   <!-- REMINDERS -->
   <div class="page" id="page-rem">
-    <div class="page-header">
-      <div class="week-bar">
-        <span id="r-wlabel" style="display:none"></span>
-      </div>
-    </div>
+    <span id="r-wlabel" style="display:none"></span>
     <div class="page-body">
       <!-- Time config -->
       <div class="defbox" style="margin-bottom:12px">
@@ -579,11 +571,7 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
 
   <!-- FEEDBACK -->
   <div class="page" id="page-feedback">
-    <div class="page-header">
-      <div class="week-bar">
-        <span id="fb-wlabel" style="display:none"></span>
-      </div>
-    </div>
+    <span id="fb-wlabel" style="display:none"></span>
     <div class="page-body">
       <div style="margin-bottom:12px">
         <div style="font-size:14px;font-weight:700;margin-bottom:4px">Feedback messages</div>
@@ -727,7 +715,48 @@ function startPolling(){
   if(_pollingInterval)return;
   _lastOrderCount=ORDERS.length;
   _lastOrderIds=new Set(ORDERS.map(function(o){return String(o.wix);}));
-  _pollingInterval=setInterval(pollForNewOrders, 30000); // every 30 seconds
+  // Request notification permission
+  if('Notification' in window && Notification.permission==='default'){
+    Notification.requestPermission();
+  }
+  _pollingInterval=setInterval(pollForNewOrders, 30000);
+}
+
+async function pollForNewOrders(){
+  try {
+    var data=await apiFetch('/api/orders?_='+Date.now());
+    if(!data.orders)return;
+    var newOrders=data.orders.filter(function(o){return !_lastOrderIds.has(String(o.wix));});
+    if(newOrders.length>0){
+      ORDERS=data.orders;
+      _lastOrderIds=new Set(ORDERS.map(function(o){return String(o.wix);}));
+      renderAll();
+      showNewOrderToast(newOrders);
+      sendSystemNotification(newOrders);
+    }
+  } catch(e){}
+}
+
+function sendSystemNotification(newOrders){
+  if(!('Notification' in window))return;
+  if(Notification.permission!=='granted')return;
+  var count=newOrders.length;
+  var names=newOrders.map(function(o){return properName(o.name).split(' ')[0];}).join(', ');
+  var title=count===1?'New order — '+names:''+count+' new orders arrived';
+  var body=count===1
+    ?(newOrders[0].wix+' · '+newOrders[0].items.map(function(i){return resolveItemName(i.p)+' ×'+i.q;}).join(', '))
+    :names;
+  try {
+    var n=new Notification(title,{
+      body: body,
+      icon: 'https://static.wixstatic.com/media/5f0772_31200324f99d4a099dd4a56742cb972d~mv2.png/v1/fill/w_162,h_162,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/Logo%2050%20x%2050%20(1)_edited_edited.png',
+      badge: 'https://static.wixstatic.com/media/5f0772_31200324f99d4a099dd4a56742cb972d~mv2.png/v1/fill/w_162,h_162,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/Logo%2050%20x%2050%20(1)_edited_edited.png',
+      tag: 'diblu-new-order',
+      requireInteraction: false,
+    });
+    n.onclick=function(){window.focus();n.close();};
+    setTimeout(function(){n.close();},8000);
+  } catch(e){}
 }
 
 async function pollForNewOrders(){
