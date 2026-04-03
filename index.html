@@ -57,7 +57,7 @@ body{font-family:'Google Sans','Roboto','DM Sans',sans-serif;background:var(--bg
 .topbar-right{display:flex;gap:8px;align-items:center;}
 .topbar-total{font-size:13px;font-weight:500;color:var(--green);margin-right:4px;}
 .page{display:none;padding:0;max-width:none;min-height:calc(100vh - 48px);}
-.page-header{background:var(--surface);padding:0 24px;position:sticky;top:48px;z-index:25;border-bottom:1px solid var(--border);box-shadow:0 1px 2px rgba(60,64,67,.1);}
+.page-header{background:var(--surface);padding:0 24px;position:sticky;top:48px;z-index:25;}.page-header:not(:empty){border-bottom:1px solid var(--border);box-shadow:0 1px 2px rgba(60,64,67,.1);}
 .page-body{padding:20px 24px;max-width:1400px;}
 .page.on{display:block;}
 .btn{padding:8px 16px;border-radius:4px;border:1px solid var(--border-dark);background:var(--surface);cursor:pointer;font-size:14px;font-weight:500;color:var(--text);font-family:inherit;transition:box-shadow .15s,background .15s;letter-spacing:.25px;}
@@ -103,7 +103,7 @@ body{font-family:'Google Sans','Roboto','DM Sans',sans-serif;background:var(--bg
 .order-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:0;}
 .order-tab{padding:12px 20px;font-size:14px;font-weight:500;color:var(--text-2);cursor:pointer;border:none;background:none;border-bottom:3px solid transparent;margin-bottom:-1px;transition:all .2s;letter-spacing:.25px;}
 .order-tab.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:500;}
-.sheet-table-wrap{overflow-x:hidden;}
+.sheet-table-wrap{overflow-x:auto;}
 .sheet-table-wrap table thead tr{position:sticky;top:0;z-index:2;background:var(--bg);}
 .sort-arrow{font-size:10px;margin-left:3px;color:var(--text-3);}
 .custom-card{border-left:3px solid var(--purple)!important;}
@@ -392,7 +392,15 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
 </nav>
 <div class="main">
   <div class="topbar" style="height:48px;padding:0 24px;">
-    <div class="topbar-title" id="topbar-title">Orders</div>
+    <div style="display:flex;align-items:center;gap:0;">
+      <div class="topbar-title" id="topbar-title">Orders</div>
+      <div id="topbar-weeknav" style="display:none;align-items:center;gap:6px;margin-left:16px;padding-left:16px;border-left:1px solid var(--border);">
+        <button class="wbtn" id="topbar-week-prev" style="padding:4px 10px;font-size:13px;">←</button>
+        <span id="topbar-week-label" style="font-size:13px;font-weight:500;min-width:160px;text-align:center;"></span>
+        <button class="wbtn" id="topbar-week-next" style="padding:4px 10px;font-size:13px;">→</button>
+        <button class="wbtn today-btn" id="topbar-week-today" style="padding:4px 10px;font-size:11px;">This week</button>
+      </div>
+    </div>
     <div class="topbar-right">
       <span class="topbar-total" id="topbar-total" style="display:none"></span>
       <button class="btn" onclick="refreshOrders()" id="refresh-btn" style="font-size:11px;padding:4px 12px;" title="Refresh orders">↻ Refresh</button>
@@ -412,11 +420,7 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
             <button id="otab-calendar" onclick="switchOrderTab('calendar')" style="padding:5px 12px;font-size:12px;font-weight:500;border:none;cursor:pointer;background:var(--accent);color:#fff;font-family:inherit;">Calendar</button>
             <button id="otab-sheet" onclick="switchOrderTab('sheet')" style="padding:5px 12px;font-size:12px;font-weight:500;border:none;cursor:pointer;background:var(--surface);color:var(--text-2);font-family:inherit;">List</button>
           </div>
-          <!-- Week nav -->
-          <button class="wbtn" onclick="changeWeek('o',-1)" style="padding:5px 10px;">←</button>
-          <span class="wlabel" id="o-wlabel" style="min-width:160px;font-size:13px;"></span>
-          <button class="wbtn" onclick="changeWeek('o',1)" style="padding:5px 10px;">→</button>
-          <button class="wbtn today-btn" onclick="goToday('o')" style="padding:4px 10px;font-size:11px;">This week</button>
+          <span id="o-wlabel" style="display:none"></span>
           <!-- Filters -->
           <div class="filters" style="padding:0;margin:0;flex-wrap:nowrap;overflow-x:auto;">
             <button class="fbtn on" data-f="all" onclick="setFilter(this)">All</button>
@@ -493,10 +497,7 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
   <div class="page" id="page-prod">
     <div class="page-header">
       <div class="week-bar">
-        <button class="wbtn" onclick="changeWeek('p',-1)">←</button>
-        <span class="wlabel" id="p-wlabel"></span>
-        <button class="wbtn" onclick="changeWeek('p',1)">→</button>
-        <button class="wbtn today-btn" onclick="goToday('p')">This week</button>
+        <span id="p-wlabel" style="display:none"></span>
         <select id="prod-shift-filter" onchange="renderProd()" style="padding:5px 10px;border:1px solid var(--border-dark);border-radius:7px;font-size:12px;font-family:inherit;background:var(--surface);color:var(--text);cursor:pointer">
           <option value="all">All shifts</option>
           <option value="morning">Morning</option>
@@ -523,10 +524,7 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
   <div class="page" id="page-tasks">
     <div class="page-header">
       <div class="week-bar">
-        <button class="wbtn" onclick="changeWeek('t',-1)">←</button>
-        <span class="wlabel" id="t-wlabel"></span>
-        <button class="wbtn" onclick="changeWeek('t',1)">→</button>
-        <button class="wbtn today-btn" onclick="goToday('t')">This week</button>
+        <span id="t-wlabel" style="display:none"></span>
       </div>
     </div>
     <div class="page-body" id="tasks-body"></div>
@@ -536,10 +534,7 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
   <div class="page" id="page-rem">
     <div class="page-header">
       <div class="week-bar">
-        <button class="wbtn" onclick="changeWeek('r',-1)">←</button>
-        <span class="wlabel" id="r-wlabel"></span>
-        <button class="wbtn" onclick="changeWeek('r',1)">→</button>
-        <button class="wbtn today-btn" onclick="goToday('r')">This week</button>
+        <span id="r-wlabel" style="display:none"></span>
       </div>
     </div>
     <div class="page-body">
@@ -586,10 +581,7 @@ textarea.msginp:focus{outline:none;border-color:var(--accent);}
   <div class="page" id="page-feedback">
     <div class="page-header">
       <div class="week-bar">
-        <button class="wbtn" onclick="changeWeek('fb',-1)">←</button>
-        <span class="wlabel" id="fb-wlabel"></span>
-        <button class="wbtn" onclick="changeWeek('fb',1)">→</button>
-        <button class="wbtn today-btn" onclick="goToday('fb')">This week</button>
+        <span id="fb-wlabel" style="display:none"></span>
       </div>
     </div>
     <div class="page-body">
@@ -724,6 +716,49 @@ async function refreshOrders(){
   await apiLoadOrders();
   renderAll();
   btn.textContent='↻ Refresh';btn.disabled=false;
+}
+
+// ── POLLING FOR NEW ORDERS ────────────────────────────────
+var _pollingInterval=null;
+var _lastOrderCount=0;
+var _lastOrderIds=new Set();
+
+function startPolling(){
+  if(_pollingInterval)return;
+  _lastOrderCount=ORDERS.length;
+  _lastOrderIds=new Set(ORDERS.map(function(o){return String(o.wix);}));
+  _pollingInterval=setInterval(pollForNewOrders, 30000); // every 30 seconds
+}
+
+async function pollForNewOrders(){
+  try {
+    var data=await apiFetch('/api/orders?_='+Date.now());
+    if(!data.orders)return;
+    var newOrders=data.orders.filter(function(o){return !_lastOrderIds.has(String(o.wix));});
+    if(newOrders.length>0){
+      // Update local data
+      ORDERS=data.orders;
+      _lastOrderIds=new Set(ORDERS.map(function(o){return String(o.wix);}));
+      renderAll();
+      showNewOrderToast(newOrders);
+    }
+  } catch(e){}
+}
+
+function showNewOrderToast(newOrders){
+  // Remove existing toast
+  var existing=document.getElementById('new-order-toast');
+  if(existing)existing.remove();
+  var names=newOrders.map(function(o){return o.name.split(' ')[0];}).join(', ');
+  var t=document.createElement('div');
+  t.id='new-order-toast';
+  t.style.cssText='position:fixed;bottom:24px;right:24px;background:#1a73e8;color:#fff;padding:14px 18px;border-radius:8px;font-size:14px;font-weight:500;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.25);display:flex;align-items:center;gap:12px;max-width:320px;';
+  t.innerHTML='<span style="font-size:20px">🛎</span><div><div style="font-weight:700">New order'+(newOrders.length>1?'s':'')+' arrived!</div><div style="font-size:12px;opacity:.9;margin-top:2px">'+esc(names)+(newOrders.length>1?' + '+(newOrders.length-1)+' more':' · '+esc(newOrders[0].wix))+'</div></div><button onclick="this.parentNode.remove()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:0;margin-left:8px;opacity:.8">×</button>';
+  document.body.appendChild(t);
+  // Play notification sound
+  try{var a=new AudioContext();var o=a.createOscillator();var g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.setValueAtTime(880,a.currentTime);o.frequency.setValueAtTime(1100,a.currentTime+0.1);g.gain.setValueAtTime(0.3,a.currentTime);g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.4);o.start(a.currentTime);o.stop(a.currentTime+0.4);}catch(e){}
+  // Auto-dismiss after 8 seconds
+  setTimeout(function(){if(t.parentNode)t.remove();},8000);
 }
 
 async function apiLoadConfig(){
@@ -974,12 +1009,13 @@ async function doLogin(){
   await apiLoadReminders();
   addRow();
   renderOrders();
+  startPolling();
   updateTasksBadge();
   if(isAdmin){updateAdminBadge();}
-  document.getElementById('p-wlabel').textContent=fmtWeek(pW);
-  document.getElementById('t-wlabel').textContent=fmtWeek(tW);
-  document.getElementById('r-wlabel').textContent=fmtWeek(rW);
-  document.getElementById('fb-wlabel').textContent=fmtWeek(fbW);
+  document.getElementById('p-wlabel').textContent=fmtWeek(pW);if(typeof updateTopbarWeekNav==='function')updateTopbarWeekNav('prod');
+  document.getElementById('t-wlabel').textContent=fmtWeek(tW);if(typeof updateTopbarWeekNav==='function')updateTopbarWeekNav('tasks');
+  document.getElementById('r-wlabel').textContent=fmtWeek(rW);if(typeof updateTopbarWeekNav==='function')updateTopbarWeekNav('rem');
+  document.getElementById('fb-wlabel').textContent=fmtWeek(fbW);if(typeof updateTopbarWeekNav==='function')updateTopbarWeekNav('feedback');
 }
 
 function switchViewAs(v){
@@ -1071,6 +1107,25 @@ function goToday(ctx){
 }
 
 var pageTitles={orders:'Orders',prod:'Production',tasks:'Tasks',rem:'Send Reminders',feedback:'Feedback',recurring:'Recurring Orders',admin:'Admin',new:'New Order',sheet:'Orders List'};
+// Pages that have a week nav
+var weekNavPages = {
+  orders: {ctx:'o', label:'o-wlabel', prev:function(){changeWeek('o',-1);}, next:function(){changeWeek('o',1);}, today:function(){goToday('o');}},
+  prod:   {ctx:'p', label:'p-wlabel', prev:function(){changeWeek('p',-1);}, next:function(){changeWeek('p',1);}, today:function(){goToday('p');}},
+  tasks:  {ctx:'t', label:'t-wlabel', prev:function(){changeWeek('t',-1);}, next:function(){changeWeek('t',1);}, today:function(){goToday('t');}},
+  rem:    {ctx:'r', label:'r-wlabel', prev:function(){changeWeek('r',-1);}, next:function(){changeWeek('r',1);}, today:function(){goToday('r');}},
+  feedback:{ctx:'fb',label:'fb-wlabel',prev:function(){changeWeek('fb',-1);},next:function(){changeWeek('fb',1);},today:function(){goToday('fb');}},
+};
+function updateTopbarWeekNav(p){
+  var wn=document.getElementById('topbar-weeknav');
+  var cfg=weekNavPages[p];
+  if(!cfg){wn.style.display='none';return;}
+  wn.style.display='flex';
+  var labelEl=document.getElementById(cfg.label);
+  document.getElementById('topbar-week-label').textContent=labelEl?labelEl.textContent:'';
+  document.getElementById('topbar-week-prev').onclick=cfg.prev;
+  document.getElementById('topbar-week-next').onclick=cfg.next;
+  document.getElementById('topbar-week-today').onclick=cfg.today;
+}
 function showPage(p){
   document.querySelectorAll('.page').forEach(function(el){el.classList.remove('on');});
   document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('on');});
@@ -1086,10 +1141,14 @@ function showPage(p){
   if(p==='feedback'){renderFeedback();}
   if(p==='recurring')renderRecurring();
   if(p==='admin'){renderAdmin();updateAdminBadge();}
+  updateTopbarWeekNav(p);
 }
 function changeWeek(ctx,d){
   if(ctx==='o')oW+=d;else if(ctx==='p')pW+=d;else if(ctx==='t')tW+=d;else if(ctx==='r')rW+=d;else if(ctx==='fb')fbW+=d;
   if(ctx==='o')renderOrders();else if(ctx==='p')renderProd();else if(ctx==='t')renderTasks();else if(ctx==='fb')renderFeedback();else renderRem();
+  // Sync topbar label
+  var pages={o:'orders',p:'prod',t:'tasks',r:'rem',fb:'feedback'};
+  updateTopbarWeekNav(pages[ctx]);
 }
 function setFilter(btn){
   filt=btn.getAttribute('data-f');
@@ -1104,7 +1163,7 @@ function filterCustom(){
 }
 
 function renderOrders(){
-  document.getElementById('o-wlabel').textContent=fmtWeek(oW);
+  document.getElementById('o-wlabel').textContent=fmtWeek(oW);if(typeof updateTopbarWeekNav==='function')updateTopbarWeekNav('orders');
   var days=weekDates(oW);
   var customCount=ORDERS.filter(function(o){return o.customDate&&!o.date;}).length;
   document.getElementById('unalloc-count').textContent=customCount;
@@ -1461,7 +1520,7 @@ function buildMsg(o,template){
 function sendWA(id){var o=ORDERS.find(function(x){return String(x.id)===String(id);});if(!o)return;closeModal();window.open('https://wa.me/'+o.phone.replace(/\D/g,'')+'/?text='+waEncode(buildMsg(o)),'_blank');}
 
 function renderProd(){
-  document.getElementById('p-wlabel').textContent=fmtWeek(pW);
+  document.getElementById('p-wlabel').textContent=fmtWeek(pW);if(typeof updateTopbarWeekNav==='function')updateTopbarWeekNav('prod');
   var days=weekDates(pW);var isos=days.map(isoDate);
   var shiftSel=(document.getElementById('prod-shift-filter')||{}).value||'all';
   var typeSel=(document.getElementById('prod-type-filter')||{}).value||'all';
@@ -1626,7 +1685,7 @@ function showPopup(e,day,unit){
 }
 
 function renderTasks(){
-  document.getElementById('t-wlabel').textContent=fmtWeek(tW);
+  document.getElementById('t-wlabel').textContent=fmtWeek(tW);if(typeof updateTopbarWeekNav==='function')updateTopbarWeekNav('tasks');
   var days=weekDates(tW);
   var pendingCount=TASKS.filter(function(t){return!t.done;}).length;
   document.getElementById('tasks-badge').textContent=pendingCount;
@@ -1672,7 +1731,7 @@ function closeCommentModal(){document.getElementById('comment-overlay').classNam
 function maybeCloseComment(e){if(e.target===document.getElementById('comment-overlay'))closeCommentModal();}
 
 function renderRem(){
-  document.getElementById('r-wlabel').textContent=fmtWeek(rW);
+  document.getElementById('r-wlabel').textContent=fmtWeek(rW);if(typeof updateTopbarWeekNav==='function')updateTopbarWeekNav('rem');
   var days=weekDates(rW);var isos=days.map(isoDate);
   var list=ORDERS.filter(function(o){
     return o.delivery!=='delivered'&&o.date&&isos.indexOf(o.date)>=0;
@@ -2052,7 +2111,7 @@ function downloadSheetCSV(){
   document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
 }
 function renderFeedback(){
-  document.getElementById('fb-wlabel').textContent=fmtWeek(fbW);
+  document.getElementById('fb-wlabel').textContent=fmtWeek(fbW);if(typeof updateTopbarWeekNav==='function')updateTopbarWeekNav('feedback');
   var days=weekDates(fbW);var isos=days.map(isoDate);
   var delivered=ORDERS.filter(function(o){return o.delivery==='delivered'&&!o.recurring&&o.date&&isos.indexOf(o.date)>=0;}).sort(function(a,b){return a.date<b.date?-1:1;});
   var n=Object.keys(fbSel).filter(function(k){return fbSel[k];}).length;
